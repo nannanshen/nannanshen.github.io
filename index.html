@@ -152,6 +152,120 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/11/PHP%E5%92%8CMYSQL%E5%AD%A6%E4%B9%A0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/02/11/PHP%E5%92%8CMYSQL%E5%AD%A6%E4%B9%A0/" class="post-title-link" itemprop="url">PHP和MYSQL学习</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-02-11 15:47:04" itemprop="dateCreated datePublished" datetime="2020-02-11T15:47:04+08:00">2020-02-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-12 12:12:12" itemprop="dateModified" datetime="2020-02-12T12:12:12+08:00">2020-02-12</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><ul>
+<li>对于PHP和MYSQL，在刚接触渗透的时候就有了解过，由于基础不是很扎实以及了解不深入，决定再过一遍。</li>
+<li>个人觉得PHP和大多数编程语言一样基础语法相通，需要记的应该是容易引起漏洞的变量和函数。MYSQL也一样，基本的查询过一遍后重点了解和注入有关的语句用法以及特性。</li>
+</ul>
+<h1 id="笔记"><a href="#笔记" class="headerlink" title="笔记"></a>笔记</h1><h2 id="PHP"><a href="#PHP" class="headerlink" title="PHP"></a>PHP</h2><ol>
+<li><p>PHP变量以$符号开头，对大小写敏感，命名规则和其他语言差不多，且变量类型不需要定义。</p>
+</li>
+<li><p>超全局变量：</p>
+<p>$GLOBALS  可在任意位置访问 是一个数组 存储了所有全局变量<br>$_SERVER  保存了报头、路径和脚本位置信息<br>$_REQUEST  用于收集表单数据<br>$_POST  收集POST请求提交的数据<br>$_GET  收集GET请求提交的数据<br>$_FILES  用于文件上传<br>$_ENV  服务器环境变量<br>$_COOKIE  用于会话控制<br>$_SESSION  同上</p>
+</li>
+<li><p>表单处理时，$_SERVER[“PHP_SELF”] 能将表单数据发送到页面本身而不用去请求其他页面，但这也可能引发xss漏洞。</p>
+</li>
+<li><p>包含函数：include （或 require）语句会获取指定文件中存在的所有文本/代码/标记，并复制到使用 include 语句的文件中，用于文件包含，但这也容易引发漏洞。</p>
+<p>php 中引发文件包含漏洞的通常是以下四个函数：<br>1、include() 当使用该函数包含文件时，只有代码执行到 include() 函数时才将文件包含进来，发生错误时只给出一个警告，继续向下执行。<br>2、include_once() 功能和 include() 相同，区别在于当重复调用同一文件时，程序只调用一次。<br>3、require() 只要程序一执行就会立即调用文件,发生错误的时候会输出错误信息,并且终止脚本的运行<br>4、require_once() 它的功能与 require() 相同，区别在于当重复调用同一文件时，程序只调用一次。<br>当使用这四个函数包含一个新文件时，该文件将作为 PHP 代码执行，PHP 内核并不在意该被包含的文件是什么类型。所以如果被包含的是 txt 文件、图片文件、远程 URL、也都将作为 PHP 代码执行</p>
+</li>
+<li><p>代码执行函数：</p>
+<p>eval 函数：把字符串按照 PHP 代码来执行</p>
+<p>assert函数：检查一个断言是否为 FALSE，如果 是字符串，它将会被 assert() 当做 PHP 代码来执行</p>
+<p>preg_replace函数：执行一个正则表达式的搜索和替换，当$pattern为/e，会把replacement参数当成PHP代码执行。</p>
+<p>array_map函数：将用户自定义函数作用到数组中的每个值上，并返回用户自定义函数作用后的带有新值的数组。回调函数接受的参数数目应该和传递给 array_map() 函数的数组数目一致。</p>
+</li>
+<li><p>命令执行函数：</p>
+<p> exec函数：执行一个外部程序</p>
+<p>shell_exec函数：通过 shell 环境执行命令，并且将完整的输出以字符串的方式返回（安全模式不能使用）</p>
+<p>passthru函数：执行外部程序并且显示原始输出</p>
+<p>system函数：执行外部程序，并且显示输出</p>
+<p>proc_open函数：proc_open — 执行一个命令，并且打开用来输入/输出的文件指针</p>
+<p>popen函数：打开一个指向进程的管道，该进程由派生给定的 command 命令执行而产生</p>
+</li>
+<li><p>文件操作函数：</p>
+<p>不一一列举，涉及到文件操作都有可能产生漏洞</p>
+</li>
+<li><p>其他：</p>
+<p>phpinfo函数：输出PHP当前状态的各种信息、服务器信息及系统信息等</p>
+<p>ini_set函数：修改和设置PHP环境配置参数</p>
+<p>ini_restore函数：恢复PHP环境配置参数至初始值</p>
+</li>
+<li><p>总结：需要通过查看大量案例理解、复现每个漏洞产生的原理，不仅限于理论。</p>
+</li>
+</ol>
+<h2 id="MYSQL"><a href="#MYSQL" class="headerlink" title="MYSQL"></a>MYSQL</h2><ol>
+<li>基础就是增删查改。重点在于查询。UPDATE 更新数据，ALTER修改表和字段名，DELETE删除这种涉及到修改数据库内容的要慎用。</li>
+<li>涉及到查询范围的。WHERE字句是常用的，设定一个查询范围：<code>SELECT * FROM TABLE_NAME WHERE id=1;</code>  更粗略的查询的可以加上与LIKE子句连用 <code>WHERE name LIKE &#39;admin%&#39;</code>  。</li>
+<li>联合查询UNION是注入里比较常用的，他可以联合两个以上的SELECT语句结果到一个集合当中。UNION会合并重复数据，UNION ALL 不会。</li>
+<li>排序ORDER BY 将结果按某一字段排序，经常用于判断表内的字段数。ORDER BY 1表示按第一个栏位排序，2表示第二个以此类推，达到最大字段数再增加就会产生错误。SQL为什么要判断字段数，当有回显的时候，需要判断显示位，就需要保持联合查询前后的语句的字段数是一样的。</li>
+<li>分组GROUP BY根据一个或多个列对结果集进行分组。一般会和COUNT(*)连用。比如   <code>SELECT username,count(*) FROM users GROUP BY username</code> 这时候形成了一个新的表，在最开始的时候后我们看到的是一个username-count()的空表，但是在GROUP BY执行过程中，一行一行的去扫描原始表的username字段，如果username在username-count()不存在，那么就将他插入，并置count()置1，如果username在username-count()表中已经存在，那么就在原来的count(*)基础上加1，就这样直到扫描完整个表，就得到一个新的表了。这个经常用于报错注入，具体还是等以后学到SQL注入再分析。</li>
+<li>等值连接INNER JION 用于获取两个表中字段匹配关系的记录。这个经常用于偏移注入，具体原理也是等后面分析。</li>
+<li>函数：CONCAT()合并字符串用于绕过，ASCII()返回字符的ASCII码用于布尔盲注，MID()截取字符串用于逐字猜解等等都是常用于手工注入的函数。具体后面再将</li>
+<li>总结：基本的SQL语句都是相同的，但不同的数据库有不同的特性，注入的方法也是不同的。</li>
+</ol>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -177,7 +291,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2020-02-11 10:32:06 / 修改时间：15:41:06" itemprop="dateCreated datePublished" datetime="2020-02-11T10:32:06+08:00">2020-02-11</time>
+              <time title="创建时间：2020-02-11 10:32:06 / 修改时间：18:04:34" itemprop="dateCreated datePublished" datetime="2020-02-11T10:32:06+08:00">2020-02-11</time>
             </span>
 
           
@@ -227,7 +341,7 @@
 <p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/4.png" alt="source"></p>
 <p>​    试了一下，居然成了？？好吧，表和字段都有了，但是没回显，普通盲注又不行，咋办。</p>
 <ol start="2">
-<li><p>又是一通瞎几把找资料，发现Access还可能出现cookie注入。简单来说就是后端接收变量不明确，可能把cookie内的值也当做数据库查询的值代入查询了。这种方法跨域用来绕过一般的waf。试了一下，在cookie里加入id=xxx这样的值，然后把url后面的?id=xxx去掉，可以正常访问。说明存在cookie注入。那现在就需要把盲注的语句放到cookie里就行了！</p>
+<li><p>又是一通瞎几把找资料，发现Access还可能出现cookie注入。简单来说就是后端接收变量不明确，可能把cookie内的值也当做数据库查询的值代入查询了。这种方法可以用来绕过一般的waf。试了一下，在cookie里加入id=xxx这样的值，然后把url后面的?id=xxx去掉，可以正常访问。说明存在cookie注入。那现在就需要把盲注的语句放到cookie里就行了！</p>
 </li>
 <li><p>盲注就不多说了，资料都有。大概就是这样</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">?id&#x3D;xxx and(select top 1 len(admin_name) from admin)&gt;5</span><br><span class="line">?id&#x3D;xxx and(select top 1 asc(mid(admin_name,1,1)) from admin)&gt;100</span><br></pre></td></tr></table></figure>
@@ -444,7 +558,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">2</span>
+          <span class="site-state-item-count">3</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
