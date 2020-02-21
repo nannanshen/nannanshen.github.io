@@ -20,17 +20,20 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Pisces","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="渗透测试">
-<meta property="og:type" content="website">
-<meta property="og:title" content="学习笔记">
-<meta property="og:url" content="http://yoursite.com/tags/sql%E6%B3%A8%E5%85%A5/index.html">
+  <meta name="description" content="意义 找到有价值的页面信息 上传 后台 网站信息（phpinfo、源码备份、说明文档…）    原理 提交请求（GET、HEAD)，查看返回包信息（状态码等）  工具 Windows：御剑、7kbscan-WebPathBrute、DirBuster、PmWebDirScan、burp suite Linux：DirBuster、PmWebDirScan、burp suite  找后台办法 穷举猜">
+<meta property="og:type" content="article">
+<meta property="og:title" content="目录扫描">
+<meta property="og:url" content="http://yoursite.com/2020/02/20/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/index.html">
 <meta property="og:site_name" content="学习笔记">
-<meta property="og:description" content="渗透测试">
+<meta property="og:description" content="意义 找到有价值的页面信息 上传 后台 网站信息（phpinfo、源码备份、说明文档…）    原理 提交请求（GET、HEAD)，查看返回包信息（状态码等）  工具 Windows：御剑、7kbscan-WebPathBrute、DirBuster、PmWebDirScan、burp suite Linux：DirBuster、PmWebDirScan、burp suite  找后台办法 穷举猜">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-02-20T08:01:26.000Z">
+<meta property="article:modified_time" content="2020-02-20T10:17:21.515Z">
 <meta property="article:author" content="nannanshen">
+<meta property="article:tag" content="目录扫描">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://yoursite.com/tags/sql%E6%B3%A8%E5%85%A5/">
+<link rel="canonical" href="http://yoursite.com/2020/02/20/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/">
 
 
 <script id="page-configurations">
@@ -38,11 +41,11 @@
   CONFIG.page = {
     sidebar: "",
     isHome: false,
-    isPost: false
+    isPost: true
   };
 </script>
 
-  <title>标签: sql注入 | 学习笔记</title>
+  <title>目录扫描 | 学习笔记</title>
   
 
 
@@ -147,110 +150,114 @@
           <div class="content">
             
 
+  <div class="posts-expand">
+      
   
   
-  
-  <div class="post-block">
-    <div class="posts-collapse">
-      <div class="collection-title">
-        <h1 class="collection-header">sql注入
-          <small>标签</small>
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/20/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          目录扫描
         </h1>
-      </div>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-20 16:01:26 / 修改时间：18:17:21" itemprop="dateCreated datePublished" datetime="2020-02-20T16:01:26+08:00">2020-02-20</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
 
       
-    <div class="collection-year">
-      <h1 class="collection-header">2020</h1>
-    </div>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-02-20T10:43:00+08:00"
-              content="2020-02-20">
-          02-20
-        </time>
-      </div>
-
-      <h2 class="post-title">
-          <a class="post-title-link" href="/2020/02/20/sql%E6%B3%A8%E5%85%A5%E5%B7%A5%E5%85%B7sqlmap%E7%9A%84%E4%BD%BF%E7%94%A8/" itemprop="url">
-            <span itemprop="name">sql注入工具sqlmap的使用</span>
-          </a>
-      </h2>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-02-15T10:27:54+08:00"
-              content="2020-02-15">
-          02-15
-        </time>
-      </div>
-
-      <h2 class="post-title">
-          <a class="post-title-link" href="/2020/02/15/MSSQL%E6%B3%A8%E5%85%A5/" itemprop="url">
-            <span itemprop="name">MSSQL注入</span>
-          </a>
-      </h2>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-02-14T09:00:45+08:00"
-              content="2020-02-14">
-          02-14
-        </time>
-      </div>
-
-      <h2 class="post-title">
-          <a class="post-title-link" href="/2020/02/14/MYSQL%E6%B3%A8%E5%85%A5/" itemprop="url">
-            <span itemprop="name">MYSQL注入</span>
-          </a>
-      </h2>
-
-    </header>
-  </article>
-
-  <article itemscope itemtype="http://schema.org/Article">
-    <header class="post-header">
-
-      <div class="post-meta">
-        <time itemprop="dateCreated"
-              datetime="2020-02-11T10:32:06+08:00"
-              content="2020-02-11">
-          02-11
-        </time>
-      </div>
-
-      <h2 class="post-title">
-          <a class="post-title-link" href="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/" itemprop="url">
-            <span itemprop="name">Access数据库的cookie盲注</span>
-          </a>
-      </h2>
-
-    </header>
-  </article>
+        <h1 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h1><ul>
+<li>找到有价值的页面信息<ul>
+<li>上传</li>
+<li>后台</li>
+<li>网站信息（phpinfo、源码备份、说明文档…）</li>
+</ul>
+</li>
+</ul>
+<h1 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h1><ul>
+<li>提交请求（GET、HEAD)，查看返回包信息（状态码等）</li>
+</ul>
+<h1 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h1><ul>
+<li>Windows：御剑、7kbscan-WebPathBrute、DirBuster、PmWebDirScan、burp suite</li>
+<li>Linux：DirBuster、PmWebDirScan、burp suite</li>
+</ul>
+<h1 id="找后台办法"><a href="#找后台办法" class="headerlink" title="找后台办法"></a>找后台办法</h1><ul>
+<li>穷举猜解（用字典）</li>
+<li>开源类程序、常见CMS。根据源码猜解</li>
+<li>搜索引擎（google hacking）</li>
+<li>二级域名</li>
+<li>其他端口</li>
+<li>盲打，插张自己服务器上的远程图片，看referer来自哪里。</li>
+<li>站点备份。www、wwwroot、web开头，rar、7z、zip结尾</li>
+<li>其他文件。readme.txt，css和js文件</li>
+<li>还找不到，那算了，从别的思路走，比如旁站，c段。</li>
+</ul>
+<h1 id="google-hacking"><a href="#google-hacking" class="headerlink" title="google hacking"></a>google hacking</h1><ul>
+<li>site:</li>
+<li>inurl:</li>
+<li>intittle:</li>
+</ul>
 
     </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/" rel="tag"># 目录扫描</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/20/sql%E6%B3%A8%E5%85%A5%E5%B7%A5%E5%85%B7sqlmap%E7%9A%84%E4%BD%BF%E7%94%A8/" rel="prev" title="sql注入工具sqlmap的使用">
+      <i class="fa fa-chevron-left"></i> sql注入工具sqlmap的使用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/20/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%94%BB%E5%87%BB/" rel="next" title="文件上传攻击">
+      文件上传攻击 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
   </div>
-  
-  
-  
-
-  
-
 
 
           </div>
@@ -301,6 +308,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#意义"><span class="nav-number">1.</span> <span class="nav-text">意义</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#原理"><span class="nav-number">2.</span> <span class="nav-text">原理</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#工具"><span class="nav-number">3.</span> <span class="nav-text">工具</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#找后台办法"><span class="nav-number">4.</span> <span class="nav-text">找后台办法</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#google-hacking"><span class="nav-number">5.</span> <span class="nav-text">google hacking</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
