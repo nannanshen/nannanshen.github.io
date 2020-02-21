@@ -28,7 +28,7 @@
 <meta property="og:description" content="找上传点 管理后台 用户后台 前台页面 目录扫描  测试流程 分析目标架构 后端语言、中间件、服务器类型，版本。   根据分析结果使用已有手段依次测试 图片马将一句话加在图片最后上传  前端验证突破 审查元素，修改限制 burp抓包，修改内容 浏览器禁用js脚本  文件内容检查突破文件内容检查类型 content-type检查 文件头检查 getimagesize()检查 php_exif模块检查">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-02-20T10:18:28.000Z">
-<meta property="article:modified_time" content="2020-02-21T03:52:30.267Z">
+<meta property="article:modified_time" content="2020-02-21T10:36:13.165Z">
 <meta property="article:author" content="nannanshen">
 <meta property="article:tag" content="文件上传">
 <meta name="twitter:card" content="summary">
@@ -185,7 +185,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-02-21 11:52:30" itemprop="dateModified" datetime="2020-02-21T11:52:30+08:00">2020-02-21</time>
+                <time title="修改时间：2020-02-21 18:36:13" itemprop="dateModified" datetime="2020-02-21T18:36:13+08:00">2020-02-21</time>
               </span>
 
           
@@ -238,11 +238,10 @@
 <li>图片插入一句话</li>
 <li>结合文件包含漏洞或解析漏洞</li>
 </ul>
-<p>##getimagesize()检查和php_exif模块检查</p>
-<ul>
+<h2 id="getimagesize-检查和php-exif模块检查"><a href="#getimagesize-检查和php-exif模块检查" class="headerlink" title="getimagesize()检查和php_exif模块检查"></a>getimagesize()检查和php_exif模块检查</h2><ul>
 <li>绕过方法同上</li>
 </ul>
-<h2 id="imagecreatefromjpeg⼆次渲染"><a href="#imagecreatefromjpeg⼆次渲染" class="headerlink" title="imagecreatefromjpeg⼆次渲染"></a>imagecreatefromjpeg⼆次渲染</h2><ul>
+<h2 id="imagecreatefromjpeg二次渲染"><a href="#imagecreatefromjpeg二次渲染" class="headerlink" title="imagecreatefromjpeg二次渲染"></a>imagecreatefromjpeg二次渲染</h2><ul>
 <li>寻找渲染前后不变的地方，替换成一句话。最好用一个比对工具。</li>
 </ul>
 <h1 id="白名单验证突破"><a href="#白名单验证突破" class="headerlink" title="白名单验证突破"></a>白名单验证突破</h1><h2 id="修改MIME类型绕过（Content-type验证）"><a href="#修改MIME类型绕过（Content-type验证）" class="headerlink" title="修改MIME类型绕过（Content-type验证）"></a>修改MIME类型绕过（Content-type验证）</h2><h2 id="00截断绕过"><a href="#00截断绕过" class="headerlink" title="00截断绕过"></a>00截断绕过</h2><ul>
@@ -292,6 +291,53 @@
 <li>使用字典＋burp进行fuzz测试  <a href="https://github.com/c0ny1/upload-fuzz-dic-builder" target="_blank" rel="noopener">https://github.com/c0ny1/upload-fuzz-dic-builder</a>  intrude里记得去掉payload encode这个选项</li>
 <li>手工</li>
 </ul>
+<h1 id="解析漏洞"><a href="#解析漏洞" class="headerlink" title="解析漏洞"></a>解析漏洞</h1><h2 id="探查web服务类型"><a href="#探查web服务类型" class="headerlink" title="探查web服务类型"></a>探查web服务类型</h2><ul>
+<li>查看http头</li>
+<li>用浏览器插件 wappalyzer</li>
+<li>第三方网站 <a href="http://www.yunsee.cn/info.html" target="_blank" rel="noopener">http://www.yunsee.cn/info.html</a></li>
+</ul>
+<h2 id="IIS"><a href="#IIS" class="headerlink" title="IIS"></a>IIS</h2><ul>
+<li><p>iis5.x~6.0</p>
+<ul>
+<li>目录解析漏洞：服务器默认会把.asp，.asa目录下的文件都解析成asp文件。前提是可以控制文件上传的路径或者是文件名。xxx.asp/xxx.jpg</li>
+<li>文件名解析漏洞：服务器默认不会取解析分号后面的内容。前提是可以控制文件名。xx.asp;.jpg</li>
+<li>畸形文件名解析漏洞：iis6.0下的可执行文件还有asa、cer、cdx ，注意，不一定能解析aspx，因为aspx是.net环境。</li>
+</ul>
+</li>
+<li><p>IIS7.0/7.5/8.0</p>
+<ul>
+<li><p>利用解析图片中的代码上传webshell，如果开启Fast-CGI模式，上传1.jpg，内容如下：</p>
+<figure class="highlight plain"><figcaption><span>fputs(fopen('dark5.php','w'),'<?php eval($_POST[cmd])?>');?>```</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">    访问1.jpg&#x2F;.php ，那么1.jpg就会被解析执行。</span><br><span class="line"></span><br><span class="line">  + fck+iis7.5：a.aspx.a.aspx.jpg..jpg</span><br><span class="line"></span><br><span class="line">## Apach</span><br><span class="line"></span><br><span class="line">+ 不可识别解析后缀</span><br><span class="line"></span><br><span class="line">  + Apache的文件解析过程是从右到左开始判断解析,如果为不可识别的后缀解析,就再往左判断。</span><br><span class="line">  + 在Apache的解析中，除了“php|php3|phtml”等规定的后缀中，任何的后缀加入，都是不会被识别解析的，也会被跳过后缀处理。test.php.k1.w2.a3 -&gt; test.php</span><br><span class="line"></span><br><span class="line">+ .htaccess</span><br><span class="line"></span><br><span class="line">  + htaccess⽂件是Apache服务器中的一个配置文件，它负责相关目录下的网页配置。通过htaccess文件，可以帮我们实现：网页301重定向、自定义404错误页面、改变文件扩展名、允许&#x2F;阻止特定的用户或者目录的访问、禁止目录列表、配置默认文档等功能。</span><br><span class="line"></span><br><span class="line">  + 该漏洞适用于目标web服务器为apache，并且.htaccess可以被上传执行的情况。</span><br><span class="line"></span><br><span class="line">  + 当.htaccess⽂件内容为SetHandler application&#x2F;x-httpd-php时，即设置当前目录所有文件都使⽤PHP解析，那么无论上传任何文件，只要文件内容符合PHP语言代码规范，就会被当作PHP执行。不符合则报错。</span><br><span class="line"></span><br><span class="line">  + 在Apache中如果需要启动 .htaccess，必须在http.conf中设置 AllowOverride</span><br><span class="line"></span><br><span class="line">    &#96;&#96;&#96;&lt;FilesMatch &quot;1.jpg&quot;&gt; SetHandler application&#x2F;x-httpd-php &lt;&#x2F;FilesMatch&gt;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Nginx"><a href="#Nginx" class="headerlink" title="Nginx"></a>Nginx</h2><ul>
+<li>CGI 同上</li>
+<li>空字节代码执行：test.jpg%00.php</li>
+</ul>
+<h1 id="双文件上传和竞争上传"><a href="#双文件上传和竞争上传" class="headerlink" title="双文件上传和竞争上传"></a>双文件上传和竞争上传</h1><h2 id="双文件上传"><a href="#双文件上传" class="headerlink" title="双文件上传"></a>双文件上传</h2><ul>
+<li>应用场景<ul>
+<li>南方/良精CMS</li>
+<li>正则默认匹配第一个filename的情况</li>
+</ul>
+</li>
+<li>利用原理<ul>
+<li>服务端默认取第二个文件作为真正的上传文件，但是在检测时只检测了第一个文件。或者只验证了第一个filename的拓展名。</li>
+</ul>
+</li>
+<li>利用方法<ul>
+<li>直接在审查元素中添加一个上传表单</li>
+<li>burp抓包之后在数据包中添加</li>
+</ul>
+</li>
+</ul>
+<h2 id="竞争上传"><a href="#竞争上传" class="headerlink" title="竞争上传"></a>竞争上传</h2><ul>
+<li>应用场景：访问webshell的时候，短时间内可以访问到，再次访问就访问不到了。</li>
+<li>利用原理：代码逻辑为，先将文件上传到服务器，然后检测后缀名，如果不符合再通过unlink删除文件，因此可以通过条件竞争的方式在unlink之前，访问webshell。</li>
+<li>利用方法：使用burp不停上传，同时用python脚本不停访问上传的文件。上传的文件访问到以后会生成一个一句话文件，只要访问成功一次就能写入。</li>
+</ul>
 
     </div>
 
@@ -313,7 +359,10 @@
     <a href="/2020/02/20/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/" rel="prev" title="目录扫描">
       <i class="fa fa-chevron-left"></i> 目录扫描
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2020/02/21/webshell%E7%AE%A1%E7%90%86%E5%B7%A5%E5%85%B7/" rel="next" title="webshell管理工具">
+      webshell管理工具 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -373,7 +422,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#找上传点"><span class="nav-number">1.</span> <span class="nav-text">找上传点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#测试流程"><span class="nav-number">2.</span> <span class="nav-text">测试流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#前端验证突破"><span class="nav-number">3.</span> <span class="nav-text">前端验证突破</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#文件内容检查突破"><span class="nav-number">4.</span> <span class="nav-text">文件内容检查突破</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文件内容检查类型"><span class="nav-number">4.1.</span> <span class="nav-text">文件内容检查类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#流程"><span class="nav-number">4.2.</span> <span class="nav-text">流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#content-type检查"><span class="nav-number">4.3.</span> <span class="nav-text">content-type检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件头检查"><span class="nav-number">4.4.</span> <span class="nav-text">文件头检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#imagecreatefromjpeg⼆次渲染"><span class="nav-number">4.5.</span> <span class="nav-text">imagecreatefromjpeg⼆次渲染</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#白名单验证突破"><span class="nav-number">5.</span> <span class="nav-text">白名单验证突破</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#修改MIME类型绕过（Content-type验证）"><span class="nav-number">5.1.</span> <span class="nav-text">修改MIME类型绕过（Content-type验证）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#00截断绕过"><span class="nav-number">5.2.</span> <span class="nav-text">00截断绕过</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解析漏洞绕过"><span class="nav-number">5.3.</span> <span class="nav-text">解析漏洞绕过</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#大小写绕过"><span class="nav-number">5.4.</span> <span class="nav-text">大小写绕过</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#黑名单验证突破"><span class="nav-number">6.</span> <span class="nav-text">黑名单验证突破</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作系统特性"><span class="nav-number">6.1.</span> <span class="nav-text">操作系统特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#语言特性"><span class="nav-number">6.2.</span> <span class="nav-text">语言特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#中间件特性"><span class="nav-number">6.3.</span> <span class="nav-text">中间件特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代码不严谨"><span class="nav-number">6.4.</span> <span class="nav-text">代码不严谨</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试思路"><span class="nav-number">6.5.</span> <span class="nav-text">测试思路</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#找上传点"><span class="nav-number">1.</span> <span class="nav-text">找上传点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#测试流程"><span class="nav-number">2.</span> <span class="nav-text">测试流程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#前端验证突破"><span class="nav-number">3.</span> <span class="nav-text">前端验证突破</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#文件内容检查突破"><span class="nav-number">4.</span> <span class="nav-text">文件内容检查突破</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#文件内容检查类型"><span class="nav-number">4.1.</span> <span class="nav-text">文件内容检查类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#流程"><span class="nav-number">4.2.</span> <span class="nav-text">流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#content-type检查"><span class="nav-number">4.3.</span> <span class="nav-text">content-type检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件头检查"><span class="nav-number">4.4.</span> <span class="nav-text">文件头检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#getimagesize-检查和php-exif模块检查"><span class="nav-number">4.5.</span> <span class="nav-text">getimagesize()检查和php_exif模块检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#imagecreatefromjpeg二次渲染"><span class="nav-number">4.6.</span> <span class="nav-text">imagecreatefromjpeg二次渲染</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#白名单验证突破"><span class="nav-number">5.</span> <span class="nav-text">白名单验证突破</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#修改MIME类型绕过（Content-type验证）"><span class="nav-number">5.1.</span> <span class="nav-text">修改MIME类型绕过（Content-type验证）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#00截断绕过"><span class="nav-number">5.2.</span> <span class="nav-text">00截断绕过</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解析漏洞绕过"><span class="nav-number">5.3.</span> <span class="nav-text">解析漏洞绕过</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#大小写绕过"><span class="nav-number">5.4.</span> <span class="nav-text">大小写绕过</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#黑名单验证突破"><span class="nav-number">6.</span> <span class="nav-text">黑名单验证突破</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#操作系统特性"><span class="nav-number">6.1.</span> <span class="nav-text">操作系统特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#语言特性"><span class="nav-number">6.2.</span> <span class="nav-text">语言特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#中间件特性"><span class="nav-number">6.3.</span> <span class="nav-text">中间件特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#代码不严谨"><span class="nav-number">6.4.</span> <span class="nav-text">代码不严谨</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试思路"><span class="nav-number">6.5.</span> <span class="nav-text">测试思路</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#解析漏洞"><span class="nav-number">7.</span> <span class="nav-text">解析漏洞</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#探查web服务类型"><span class="nav-number">7.1.</span> <span class="nav-text">探查web服务类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IIS"><span class="nav-number">7.2.</span> <span class="nav-text">IIS</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Nginx"><span class="nav-number">7.3.</span> <span class="nav-text">Nginx</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#双文件上传和竞争上传"><span class="nav-number">8.</span> <span class="nav-text">双文件上传和竞争上传</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#双文件上传"><span class="nav-number">8.1.</span> <span class="nav-text">双文件上传</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#竞争上传"><span class="nav-number">8.2.</span> <span class="nav-text">竞争上传</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -389,7 +438,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">11</span>
+          <span class="site-state-item-count">12</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
