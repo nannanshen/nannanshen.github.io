@@ -20,20 +20,17 @@
     var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Pisces","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="学习记录 由于以前入门的时候已经了解过相关知识，再复习一遍就当是查缺补漏.   术语相关： PoC，全称”Proof of Concept”，中文“概念验证”，常指一段漏洞证明的代码。 Exp，全称”Exploit”，中文“利用”，指利用系统漏洞进行攻击的动作。 Payload，中文“有效载荷”，指成功exploit之后，真正在目标系统执行的代码或指令。 Shellcode，简单翻译“shell代">
-<meta property="og:type" content="article">
-<meta property="og:title" content="网络篇">
-<meta property="og:url" content="http://yoursite.com/2020/02/12/%E7%BD%91%E7%BB%9C%E7%AF%87/index.html">
+  <meta name="description" content="渗透测试">
+<meta property="og:type" content="website">
+<meta property="og:title" content="学习笔记">
+<meta property="og:url" content="http://yoursite.com/tags/CMS%E6%B8%97%E9%80%8F/index.html">
 <meta property="og:site_name" content="学习笔记">
-<meta property="og:description" content="学习记录 由于以前入门的时候已经了解过相关知识，再复习一遍就当是查缺补漏.   术语相关： PoC，全称”Proof of Concept”，中文“概念验证”，常指一段漏洞证明的代码。 Exp，全称”Exploit”，中文“利用”，指利用系统漏洞进行攻击的动作。 Payload，中文“有效载荷”，指成功exploit之后，真正在目标系统执行的代码或指令。 Shellcode，简单翻译“shell代">
+<meta property="og:description" content="渗透测试">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2020-02-12T04:32:47.000Z">
-<meta property="article:modified_time" content="2020-02-12T07:55:17.046Z">
 <meta property="article:author" content="nannanshen">
-<meta property="article:tag" content="基础学习">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://yoursite.com/2020/02/12/%E7%BD%91%E7%BB%9C%E7%AF%87/">
+<link rel="canonical" href="http://yoursite.com/tags/CMS%E6%B8%97%E9%80%8F/">
 
 
 <script id="page-configurations">
@@ -41,11 +38,11 @@
   CONFIG.page = {
     sidebar: "",
     isHome: false,
-    isPost: true
+    isPost: false
   };
 </script>
 
-  <title>网络篇 | 学习笔记</title>
+  <title>标签: CMS渗透 | 学习笔记</title>
   
 
 
@@ -150,127 +147,50 @@
           <div class="content">
             
 
-  <div class="posts-expand">
-      
   
   
-  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/12/%E7%BD%91%E7%BB%9C%E7%AF%87/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/touxiang.jpg">
-      <meta itemprop="name" content="nannanshen">
-      <meta itemprop="description" content="渗透测试">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="学习笔记">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          网络篇
+  
+  <div class="post-block">
+    <div class="posts-collapse">
+      <div class="collection-title">
+        <h1 class="collection-header">CMS渗透
+          <small>标签</small>
         </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2020-02-12 12:32:47 / 修改时间：15:55:17" itemprop="dateCreated datePublished" datetime="2020-02-12T12:32:47+08:00">2020-02-12</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
+      </div>
 
       
-        <h1 id="学习记录"><a href="#学习记录" class="headerlink" title="学习记录"></a>学习记录</h1><ul>
-<li>由于以前入门的时候已经了解过相关知识，再复习一遍就当是查缺补漏.</li>
-</ul>
-<ol>
-<li>术语相关：<ul>
-<li>PoC，全称”Proof of Concept”，中文“概念验证”，常指一段漏洞证明的代码。</li>
-<li>Exp，全称”Exploit”，中文“利用”，指利用系统漏洞进行攻击的动作。</li>
-<li>Payload，中文“有效载荷”，指成功exploit之后，真正在目标系统执行的代码或指令。</li>
-<li>Shellcode，简单翻译“shell代码”，是Payload的一种，由于其建立正向/反向shell而得名。</li>
-</ul>
-</li>
-<li>ip相关：<ul>
-<li>A类1.0.0.0-126.0.0.0，大型网络。B类128.0.0.0-191.255.0.0，中等规模网络。C类192.0.0.0-223.255.255.0，小型网络。D类224.0.0.0-239.225.225.225，多路广播。E类240.0.0-247.255.255.255，保留地址。</li>
-<li>私有地址：A类：10.0.0.0-10.255.255.255。B类：172.16.0.0-172.31.255.255。C类：192.168.0.0-192.168.255.255。一般用在内网。 </li>
-<li>子网划分：网上有教程，计网复习也会用到，不多赘述。</li>
-<li>C段192.168.1.x-255.255.255.0</li>
-</ul>
-</li>
-<li>网络设备：<ul>
-<li>大多是概念性的，以后遇到的时候再深入。</li>
-</ul>
-</li>
-<li>端口：<ul>
-<li>对应不同的服务，根据服务来进行渗透。可以用来进行未授权访问、爆破之类的。</li>
-<li>扫描用nmap，使用方法资料很多，不多说。一般用的参数就-sS,-Pn。</li>
-</ul>
-</li>
-<li>HTTP协议：<ul>
-<li>这个也是很基础的东西，学了计网都知道。主要是要记住一些重要的请求头和状态码。</li>
-</ul>
-</li>
-<li>web通信和前后端：<ul>
-<li>也是计网的内容，不多说。主要是后端的服务要多了解一下。服务器：IIS，Apache，Tomcat等。解释器：.NET，PHP，JSP等。数据库：Access/Mssql，Mysql，Oracle等。脚本语言：ASP，PHP，JSP。都有不同的特性和常见漏洞。</li>
-</ul>
-</li>
-<li>网站搭建：<ul>
-<li>按视频里用的AWWserver。还是有点坑，安装完以后JSP死活运行不了。最后发现是JAVA环境变量的问题。修改完以后实在不行重启一下就好了。</li>
-</ul>
-</li>
-<li>本地靶场：<ul>
-<li>常见的DVWA。针对性的SQLi-abs。不多说，在线的也有。要多练习，理解原理。</li>
-</ul>
-</li>
-</ol>
-
+    <div class="collection-year">
+      <h1 class="collection-header">2020</h1>
     </div>
 
-    
-    
-    
+  <article itemscope itemtype="http://schema.org/Article">
+    <header class="post-header">
 
-      <footer class="post-footer">
-          <div class="post-tags">
-              <a href="/tags/%E5%9F%BA%E7%A1%80%E5%AD%A6%E4%B9%A0/" rel="tag"># 基础学习</a>
-          </div>
+      <div class="post-meta">
+        <time itemprop="dateCreated"
+              datetime="2020-02-22T11:21:05+08:00"
+              content="2020-02-22">
+          02-22
+        </time>
+      </div>
 
-        
+      <h2 class="post-title">
+          <a class="post-title-link" href="/2020/02/22/%E5%9F%BA%E4%BA%8ECMS%E7%9A%84%E6%B8%97%E9%80%8F/" itemprop="url">
+            <span itemprop="name">基于CMS的渗透</span>
+          </a>
+      </h2>
 
-
-        
-    <div class="post-nav">
-      <div class="post-nav-item">
-    <a href="/2020/02/11/PHP%E5%92%8CMYSQL%E5%AD%A6%E4%B9%A0/" rel="prev" title="PHP和MYSQL学习">
-      <i class="fa fa-chevron-left"></i> PHP和MYSQL学习
-    </a></div>
-      <div class="post-nav-item">
-    <a href="/2020/02/13/%E6%89%AB%E6%8F%8F%E5%99%A8%E7%9A%84%E4%BD%BF%E7%94%A8%E5%92%8C%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8%E6%80%9D%E7%BB%B4/" rel="next" title="扫描器的使用和漏洞利用思维">
-      扫描器的使用和漏洞利用思维 <i class="fa fa-chevron-right"></i>
-    </a></div>
-    </div>
-      </footer>
-    
+    </header>
   </article>
+
+    </div>
+  </div>
   
   
   
 
-  </div>
+  
+
 
 
           </div>
@@ -321,7 +241,6 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#学习记录"><span class="nav-number">1.</span> <span class="nav-text">学习记录</span></a></li></ol></div>
       </div>
       <!--/noindex-->
 
