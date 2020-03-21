@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Pisces","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="信息收集旁站、C段 旁站：同一服务器的其他站点  查询原理： DNS解析记录  在线网站： https:&#x2F;&#x2F;phpinfo.me&#x2F;bing.php https:&#x2F;&#x2F;www.webscan.cc&#x2F; https:&#x2F;&#x2F;viewdns.info&#x2F;reverseip&#x2F; https:&#x2F;&#x2F;reverseip.domaintools.com&#x2F;  注意：  通过查询得到的不一定是真实的，有可能站点已经迁移 渗透进旁">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SRC实战">
+<meta property="og:url" content="http://yoursite.com/2020/03/06/SRC%E5%AE%9E%E6%88%98/index.html">
+<meta property="og:site_name" content="学习笔记">
+<meta property="og:description" content="信息收集旁站、C段 旁站：同一服务器的其他站点  查询原理： DNS解析记录  在线网站： https:&#x2F;&#x2F;phpinfo.me&#x2F;bing.php https:&#x2F;&#x2F;www.webscan.cc&#x2F; https:&#x2F;&#x2F;viewdns.info&#x2F;reverseip&#x2F; https:&#x2F;&#x2F;reverseip.domaintools.com&#x2F;  注意：  通过查询得到的不一定是真实的，有可能站点已经迁移 渗透进旁">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-03-06T09:43:01.000Z">
+<meta property="article:modified_time" content="2020-03-21T03:14:20.784Z">
+<meta property="article:author" content="nannanshen">
+<meta property="article:tag" content="信息收集">
+<meta property="article:tag" content="SRC">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/03/06/SRC%E5%AE%9E%E6%88%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>SRC实战 | 学习笔记</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">学习笔记</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">从零开始学习web安全</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/06/SRC%E5%AE%9E%E6%88%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          SRC实战
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-06 17:43:01" itemprop="dateCreated datePublished" datetime="2020-03-06T17:43:01+08:00">2020-03-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-21 11:14:20" itemprop="dateModified" datetime="2020-03-21T11:14:20+08:00">2020-03-21</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="信息收集"><a href="#信息收集" class="headerlink" title="信息收集"></a>信息收集</h1><h2 id="旁站、C段"><a href="#旁站、C段" class="headerlink" title="旁站、C段"></a>旁站、C段</h2><ul>
+<li><p>旁站：同一服务器的其他站点</p>
+<ul>
+<li><p>查询原理：</p>
+<p>DNS解析记录</p>
+</li>
+<li><p>在线网站：</p>
+<p><a href="https://phpinfo.me/bing.php" target="_blank" rel="noopener">https://phpinfo.me/bing.php</a></p>
+<p><a href="https://www.webscan.cc/" target="_blank" rel="noopener">https://www.webscan.cc/</a></p>
+<p><a href="https://viewdns.info/reverseip/" target="_blank" rel="noopener">https://viewdns.info/reverseip/</a></p>
+<p><a href="https://reverseip.domaintools.com/" target="_blank" rel="noopener">https://reverseip.domaintools.com/</a></p>
+</li>
+<li><p>注意：</p>
+<ul>
+<li>通过查询得到的不一定是真实的，有可能站点已经迁移</li>
+<li>渗透进旁站以后不一定能跨目录操作，需要进行提权</li>
+</ul>
+<p>​</p>
+</li>
+</ul>
+</li>
+<li><p>C段：同一网段的不同服务器</p>
+<ul>
+<li>在线查询或用工具</li>
+</ul>
+</li>
+</ul>
+<h2 id="绕过CDN查找真实IP"><a href="#绕过CDN查找真实IP" class="headerlink" title="绕过CDN查找真实IP"></a>绕过CDN查找真实IP</h2><ul>
+<li><p>如何判断目标站点是否使用了CDN：多地ping（站长工具）、nslookup。</p>
+</li>
+<li><p>绕过方法：</p>
+<ul>
+<li><p>让对方发邮件，查看邮件的源代码。（rss邮件订阅…）</p>
+</li>
+<li><p>DNS缓存查询：</p>
+<p><a href="https://dnsdb.io/zh-cn/" target="_blank" rel="noopener">https://dnsdb.io/zh-cn/</a></p>
+<p><a href="https://viewdns.info/" target="_blank" rel="noopener">https://viewdns.info/</a></p>
+</li>
+<li><p>利用网站漏洞：xss，csrf</p>
+</li>
+<li><p>查询子域名ip</p>
+</li>
+<li><p>国外线路访问</p>
+</li>
+<li><p>搜索引擎：zoomeye，fofa，shodan</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="敏感路径和接口"><a href="#敏感路径和接口" class="headerlink" title="敏感路径和接口"></a>敏感路径和接口</h2><h3 id="类型"><a href="#类型" class="headerlink" title="类型"></a>类型</h3><ul>
+<li>未授权直接访问的登录页面</li>
+<li>无需登录可操作的上传页面</li>
+<li>编辑器</li>
+<li>后台</li>
+<li>历史版本</li>
+<li>错误页面</li>
+<li>phpinfo</li>
+</ul>
+<h3 id="如何寻找"><a href="#如何寻找" class="headerlink" title="如何寻找"></a>如何寻找</h3><ul>
+<li><p>目录扫描(御剑，dirbuster，burp)</p>
+</li>
+<li><p>wfuzz</p>
+<figure class="highlight plain"><figcaption><span>-w</span><a href="/root/FuzzDicts/directoryDicts/en_dirctories_all.txt">-w /root/FuzzDicts/directoryDicts/php/phpFileName.txt http://192.168.0.102/wordpress/FUZZ/FUZ2Z```</a></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">过滤参数：</span><br><span class="line"></span><br><span class="line">--hc(code)</span><br><span class="line">--hl(line)</span><br><span class="line">--hw(word)</span><br><span class="line">--hh(char)</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;wfuzz -w wordlist --hc 404 URL&#x2F;FUZZ</span><br></pre></td></tr></table></figure>
+
+<p><code>wfuzz -w wordlist --hs &quot;Not Found&quot; URL/FUZZ</code></p>
+</li>
+<li><p>在JS文件中寻找敏感接口</p>
+<p><a href="https://github.com/Threezh1/JSFinder" target="_blank" rel="noopener">https://github.com/Threezh1/JSFinder</a></p>
+<p><a href="https://github.com/m4ll0k/BurpSuite-Secret_Finder" target="_blank" rel="noopener">https://github.com/m4ll0k/BurpSuite-Secret_Finder</a></p>
+<p><a href="https://github.com/GerbenJavado/LinkFinder" target="_blank" rel="noopener">https://github.com/GerbenJavado/LinkFinder</a></p>
+<p>得到403或者404页面以后可以对该页面再进行一次fuzz，利用参数拼接得到完整地址，测试隐藏的接口。</p>
+<p>参考：</p>
+<p><a href="https://www.anquanke.com/post/id/86232" target="_blank" rel="noopener">https://www.anquanke.com/post/id/86232</a><br><a href="https://www.secpulse.com/archives/35877.html" target="_blank" rel="noopener">https://www.secpulse.com/archives/35877.html</a><br><a href="https://www.uedbox.com/post/43499/" target="_blank" rel="noopener">https://www.uedbox.com/post/43499/</a></p>
+</li>
+<li><p>IIS短文件名漏洞</p>
+<p><a href="https://blog.csdn.net/weixin_39190897/article/details/88031228" target="_blank" rel="noopener">https://blog.csdn.net/weixin_39190897/article/details/88031228</a></p>
+</li>
+<li><p>报错信息</p>
+<ul>
+<li><p>单引号爆路径   id=1‘</p>
+</li>
+<li><p>错误参数爆路径  id=-1，id[]=123</p>
+</li>
+<li><p>注入点可读取文件</p>
+<p>Windows：<br>c:\windows\php.ini php配置文件<br>c:\windows\system32\inetsrv\MetaBase.xml IIS虚拟主机配置文件<br>Linux:<br>/etc/php.ini php配置⽂件<br>/etc/httpd/conf.d/php.conf<br>/etc/httpd/conf/httpd.conf Apache配置⽂件<br>/usr/local/apache/conf/httpd.conf<br>/usr/local/apache2/conf/httpd.conf<br>/usr/local/apache/conf/extra/httpd-vhosts.conf 虚拟目录配置⽂件</p>
+</li>
+<li><p>修改请求方法为put</p>
+</li>
+<li><p>搜索引擎搜索错误页面或测试页面</p>
+<p>test.php<br>ceshi.php<br>info.php<br>phpinfo.php<br>php_info.php<br>1.php<br>Site:xxx.com error<br>Site:xxx.com warning<br>Site:xxx.com “fatal error”</p>
+</li>
+<li><p>组件特性：</p>
+<ul>
+<li><p>Apache样例文件泄露：</p>
+<p><a href="http://xxx.com/examples/servlets/servlet/CookieExample" target="_blank" rel="noopener">http://xxx.com/examples/servlets/servlet/CookieExample</a></p>
+<p><a href="http://xxx.com/examples/servlets/servlet/RequestHeaderExample" target="_blank" rel="noopener">http://xxx.com/examples/servlets/servlet/RequestHeaderExample</a></p>
+<p><a href="http://xxx.com/examples/jsp/snp/snoop.jsp" target="_blank" rel="noopener">http://xxx.com/examples/jsp/snp/snoop.jsp</a></p>
+<p><a href="http://xxx.com/examples/async/async1" target="_blank" rel="noopener">http://xxx.com/examples/async/async1</a></p>
+</li>
+<li><p>War文件信息泄露</p>
+<p>config/config.properties<br>configure/configure.properties<br>applicationContext.xml<br>sysconfig.properties<br>web.xml<br>config.xml<br>jdbc.properties</p>
+</li>
+<li><p>Swagger</p>
+<p>/swagger-ui.html<br>/swagger/swagger-ui.html<br>/api/swagger-ui.html<br>/v1.x/swagger-ui.html<br>/swagger/index.html</p>
+</li>
+<li><p>Tomcat</p>
+<p>jsp文件后缀改成大写，会显示源码</p>
+</li>
+<li><p>Nginx文件离线错误解析爆路劲</p>
+<p>要求Web服务器是nginx，且存在文件类型解析漏洞。有时在图片地址后加/x.php，该图片不但会被当作php文件执行，还有可能爆出物理路径。</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="源码泄露"><a href="#源码泄露" class="headerlink" title="源码泄露"></a>源码泄露</h2><h3 id="版本控制器造成的源码泄露"><a href="#版本控制器造成的源码泄露" class="headerlink" title="版本控制器造成的源码泄露"></a>版本控制器造成的源码泄露</h3><ul>
+<li><p>SVN源码泄露（.SVN隐藏文件）</p>
+<p>测试工具：Seay-SVN</p>
+</li>
+<li><p>Git源码泄露（.git隐藏文件）</p>
+<p>测试工具：<a href="https://github.com/lijiejie/GitHack" target="_blank" rel="noopener">https://github.com/lijiejie/GitHack</a></p>
+<p>​           <a href="https://github.com/BugScanTeam/GitHack" target="_blank" rel="noopener">https://github.com/BugScanTeam/GitHack</a></p>
+</li>
+<li><p>.DS_Store文件造成泄露</p>
+<p>.DS_Store是mac下finder用来保存如何展示文件/文件夹的数据文件，每个文件夹下对应一个，用来存储当前文件夹下的属性。</p>
+<p>测试工具：<a href="https://github.com/lijiejie/ds_store_exp" target="_blank" rel="noopener">https://github.com/lijiejie/ds_store_exp</a></p>
+</li>
+<li><p>WEB-INF/web.xml泄露</p>
+<p>WEB-INF是JAVA的WEB应用安全目录，如果想在页面中直接访问其中的文件，必须通过web.xml文件对要访问的文件进行相应映射才能访问。</p>
+</li>
+<li><p>网站备份压缩文件</p>
+</li>
+<li><p>在线网盘造成源码泄露</p>
+<ul>
+<li>百度云…</li>
+<li>github</li>
+</ul>
+</li>
+</ul>
+<h1 id="漏洞挖掘"><a href="#漏洞挖掘" class="headerlink" title="漏洞挖掘"></a>漏洞挖掘</h1><h2 id="SQL注入挖掘"><a href="#SQL注入挖掘" class="headerlink" title="SQL注入挖掘"></a>SQL注入挖掘</h2><ul>
+<li><p>出现场景：</p>
+<ul>
+<li><p>动态请求：?id=1</p>
+</li>
+<li><p>搜索框：a%’ and ‘1’=’1’ #</p>
+</li>
+<li><p>填写注册信息</p>
+<p>insert into member(username,pw,sex,phonenum,email,address) values(‘{$getdata[‘username’]}’,md5(‘{$getdata[‘password’]}’),’{$getdata[‘sex’]}’,’{$getdata[‘phonenum’]}’,’{$getdata[‘email’]}’,’{$getdata[‘add’]}’);</p>
+</li>
+<li><p>修改信息</p>
+<p>update member set sex=’{$getdata[‘sex’]}’,phonenum=’{$getdata[‘phonenum’]}’,address=’{$getdata[‘add’]}’,email=’{$getdata[‘email’]}’ where username=’{$_SESSION[‘sqli’][‘username’]}’;</p>
+</li>
+<li><p>删除</p>
+</li>
+<li><p>登录</p>
+</li>
+<li><p>HTTP头注入</p>
+<p>insert httpinfo(userid,ipaddress,useragent,httpaccept,remoteport) values(‘$is_login_id’,’$remoteipadd’,’$useragent’,’$httpaccept’,’$remoteport’);</p>
+</li>
+</ul>
+</li>
+<li><p>挖掘流程：</p>
+<ul>
+<li>判断存在注入点</li>
+<li>信息获取</li>
+<li>权限获取</li>
+</ul>
+</li>
+</ul>
+<h2 id="弱口令"><a href="#弱口令" class="headerlink" title="弱口令"></a>弱口令</h2><h3 id="类型-1"><a href="#类型-1" class="headerlink" title="类型"></a>类型</h3><ul>
+<li><p>高频用户名、密码</p>
+</li>
+<li><p>根据网站，个人特性生成密码字典</p>
+<p><a href="http://ximcx.cn/caimima/" target="_blank" rel="noopener">http://ximcx.cn/caimima/</a></p>
+</li>
+<li><p>业务上线前的测试账号</p>
+<p>test  123456</p>
+<p>test  test</p>
+<p>test  000000</p>
+</li>
+<li><p>web组件和服务的弱口令</p>
+<p>weblogic</p>
+<p>tomcat</p>
+<p>ssh</p>
+<p>ftp</p>
+</li>
+<li><p>路由器和安全设备的弱口令</p>
+</li>
+</ul>
+<h3 id="测试流程"><a href="#测试流程" class="headerlink" title="测试流程"></a>测试流程</h3><ul>
+<li><p>常规爆破</p>
+</li>
+<li><p>遇到验证码时，用pkav，tesserocr，打码平台</p>
+<p>安装tesseract</p>
+<p><a href="https://digi.bib.uni-mannheim.de/tesseract/" target="_blank" rel="noopener">https://digi.bib.uni-mannheim.de/tesseract/</a></p>
+<p>安装完成后配置环境变量</p>
+<p>安装tesserocr</p>
+<p><a href="https://github.com/simonflueckiger/tesserocr-windows_build/releases" target="_blank" rel="noopener">https://github.com/simonflueckiger/tesserocr-windows_build/releases</a></p>
+<p>pip install wheel<br>pip install G:\tesserocr-2.4.0-cp37-cp37m-win_amd64.whl</p>
+<p>复制tessdata文件</p>
+<p>tessdata 文件复制到你的python安装路径的根目录下</p>
+<p>其他问题</p>
+<p><a href="https://www.jb51.net/article/157487.htm" target="_blank" rel="noopener">https://www.jb51.net/article/157487.htm</a></p>
+<p>python调用tesserocr</p>
+<p>打码平台</p>
+<p><a href="https://blog.csdn.net/zwq912318834/article/details/78616462" target="_blank" rel="noopener">https://blog.csdn.net/zwq912318834/article/details/78616462</a><br><a href="https://www.cnblogs.com/ftl1012/p/10327783.html" target="_blank" rel="noopener">https://www.cnblogs.com/ftl1012/p/10327783.html</a></p>
+</li>
+<li><p>遇token时，带上token爆破</p>
+<p>用burp的recursive grep设置payload</p>
+</li>
+<li><p>登录口令加密传输</p>
+<p>在burp里设置payload processing rule</p>
+</li>
+</ul>
+<h3 id="一些知识点"><a href="#一些知识点" class="headerlink" title="一些知识点"></a>一些知识点</h3><ul>
+<li><p>验证账号是否存在。</p>
+<p>输入不同账号看返回结果是否一致</p>
+</li>
+<li><p>IP次数限制</p>
+<p>fake IP：<a href="https://github.com/TheKingOfDuck/burpFakeIP" target="_blank" rel="noopener">https://github.com/TheKingOfDuck/burpFakeIP</a></p>
+<p><a href="https://www.jython.org/" target="_blank" rel="noopener">https://www.jython.org/</a>   下载jpython-standalone</p>
+<p>IP代理池（成本高）</p>
+</li>
+<li><p>登录使用手册、说明、网站源码注释可能有默认密码</p>
+</li>
+<li><p>fuzz参数 /user/$login.php$</p>
+</li>
+</ul>
+<h3 id="案例分析"><a href="#案例分析" class="headerlink" title="案例分析"></a>案例分析</h3><p><a href="https://blog.csdn.net/lowhacker/article/details/89608196" target="_blank" rel="noopener">https://blog.csdn.net/lowhacker/article/details/89608196</a></p>
+<p><a href="https://blog.csdn.net/geekwei/article/details/70767727" target="_blank" rel="noopener">https://blog.csdn.net/geekwei/article/details/70767727</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/" rel="tag"># 信息收集</a>
+              <a href="/tags/SRC/" rel="tag"># SRC</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/01/%E5%AE%9E%E6%88%98%E7%9B%B8%E5%85%B3/" rel="prev" title="实战相关">
+      <i class="fa fa-chevron-left"></i> 实战相关
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#信息收集"><span class="nav-number">1.</span> <span class="nav-text">信息收集</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#旁站、C段"><span class="nav-number">1.1.</span> <span class="nav-text">旁站、C段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#绕过CDN查找真实IP"><span class="nav-number">1.2.</span> <span class="nav-text">绕过CDN查找真实IP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#敏感路径和接口"><span class="nav-number">1.3.</span> <span class="nav-text">敏感路径和接口</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#类型"><span class="nav-number">1.3.1.</span> <span class="nav-text">类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何寻找"><span class="nav-number">1.3.2.</span> <span class="nav-text">如何寻找</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码泄露"><span class="nav-number">1.4.</span> <span class="nav-text">源码泄露</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#版本控制器造成的源码泄露"><span class="nav-number">1.4.1.</span> <span class="nav-text">版本控制器造成的源码泄露</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#漏洞挖掘"><span class="nav-number">2.</span> <span class="nav-text">漏洞挖掘</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#SQL注入挖掘"><span class="nav-number">2.1.</span> <span class="nav-text">SQL注入挖掘</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#弱口令"><span class="nav-number">2.2.</span> <span class="nav-text">弱口令</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#类型-1"><span class="nav-number">2.2.1.</span> <span class="nav-text">类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#测试流程"><span class="nav-number">2.2.2.</span> <span class="nav-text">测试流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一些知识点"><span class="nav-number">2.2.3.</span> <span class="nav-text">一些知识点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#案例分析"><span class="nav-number">2.2.4.</span> <span class="nav-text">案例分析</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="nannanshen"
+      src="/images/touxiang.jpg">
+  <p class="site-author-name" itemprop="name">nannanshen</p>
+  <div class="site-description" itemprop="description">渗透测试</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/nannanshen" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;nannanshen" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友情链接
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://www.dark5.net/" title="https:&#x2F;&#x2F;www.dark5.net&#x2F;" rel="noopener" target="_blank">dark5</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">nannanshen</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.7.1
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
+<!-- 页面点击小红心 ,和看板娘冲突了。-->
+<!--<script type="text/javascript" src="/js/src/clicklove.js"></script>-->
+<!-- 看板娘 -->
+<script src="/live2d-widget/autoload.js"></script>
