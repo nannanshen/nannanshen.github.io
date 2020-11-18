@@ -17,7 +17,7 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Pisces","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+    var CONFIG = {"hostname":"yoursite.com","root":"/","scheme":"Pisces","version":"7.7.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
   <meta name="description" content="渗透测试">
@@ -129,9 +129,34 @@
     <a href="/archives/" rel="section"><i class="fa fa-fw fa-archive"></i>归档</a>
 
   </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
   </ul>
 
 </nav>
+  <div class="site-search">
+    <div class="popup search-popup">
+    <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocorrect="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result"></div>
+
+</div>
+<div class="search-pop-overlay"></div>
+
+  </div>
 </div>
     </header>
 
@@ -175,10 +200,10 @@
       <div class="post-body">
           <div class="tag-cloud">
             <div class="tag-cloud-title">
-              目前共计 10 个标签
+              目前共计 11 个标签
             </div>
             <div class="tag-cloud-tags">
-              <a href="/tags/SRC/" style="font-size: 12px; color: #ccc">SRC</a> <a href="/tags/getshell/" style="font-size: 12px; color: #ccc">getshell</a> <a href="/tags/meterpreter/" style="font-size: 12px; color: #ccc">meterpreter</a> <a href="/tags/msf/" style="font-size: 21px; color: #6f6f6f">msf</a> <a href="/tags/sql%E6%B3%A8%E5%85%A5/" style="font-size: 25.5px; color: #404040">sql注入</a> <a href="/tags/%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/" style="font-size: 21px; color: #6f6f6f">信息收集</a> <a href="/tags/%E5%85%B6%E4%BB%96%E6%B3%A8%E5%85%A5/" style="font-size: 12px; color: #ccc">其他注入</a> <a href="/tags/%E5%9F%BA%E7%A1%80%E5%AD%A6%E4%B9%A0/" style="font-size: 30px; color: #111">基础学习</a> <a href="/tags/%E6%8F%90%E6%9D%83/" style="font-size: 16.5px; color: #9d9d9d">提权</a> <a href="/tags/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/" style="font-size: 12px; color: #ccc">文件上传</a>
+              <a href="/tags/SRC/" style="font-size: 12px; color: #ccc">SRC</a> <a href="/tags/getshell/" style="font-size: 18px; color: #8e8e8e">getshell</a> <a href="/tags/meterpreter/" style="font-size: 12px; color: #ccc">meterpreter</a> <a href="/tags/msf/" style="font-size: 24px; color: #4f4f4f">msf</a> <a href="/tags/sql%E6%B3%A8%E5%85%A5/" style="font-size: 24px; color: #4f4f4f">sql注入</a> <a href="/tags/%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/" style="font-size: 24px; color: #4f4f4f">信息收集</a> <a href="/tags/%E5%85%B6%E4%BB%96%E6%B3%A8%E5%85%A5/" style="font-size: 12px; color: #ccc">其他注入</a> <a href="/tags/%E5%9F%BA%E7%A1%80%E5%AD%A6%E4%B9%A0/" style="font-size: 30px; color: #111">基础学习</a> <a href="/tags/%E6%8F%90%E6%9D%83/" style="font-size: 18px; color: #8e8e8e">提权</a> <a href="/tags/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/" style="font-size: 12px; color: #ccc">文件上传</a> <a href="/tags/%E6%B8%97%E9%80%8F%E5%AE%9E%E6%88%98/" style="font-size: 12px; color: #ccc">渗透实战</a>
             </div>
           </div>
         
@@ -265,7 +290,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">10</span>
+        <span class="site-state-item-count">11</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -352,6 +377,10 @@
   
 
 
+
+
+  
+<script src="/js/local-search.js"></script>
 
 
 
